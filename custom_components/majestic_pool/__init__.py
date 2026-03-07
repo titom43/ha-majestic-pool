@@ -7,6 +7,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
@@ -15,7 +16,6 @@ from .const import (
     ATTR_COMMAND,
     ATTR_ENTRY_ID,
     ATTR_PAYLOAD,
-    CONF_ADDRESS,
     CONF_CONNECT_ON_DEMAND,
     CONF_DEVICE_NAME_PREFIX,
     CONF_ENABLE_PAIRING_PROBE,
