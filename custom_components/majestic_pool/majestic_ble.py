@@ -111,27 +111,32 @@ class MajesticBleHub:
         payload: bytes = b"",
         expect_response: bool = True,
         response_timeout: float = 8.0,
+        disconnect_after: bool = False,
     ) -> bytes | None:
         """Send one command and optionally wait matching response by cmd."""
         async with self._lock:
+            was_connected = self.is_connected
             await self.async_connect()
             assert self._client is not None
             assert self._tx_char is not None
+            try:
+                while not self._rx_queue.empty():
+                    self._rx_queue.get_nowait()
 
-            while not self._rx_queue.empty():
-                self._rx_queue.get_nowait()
+                encoded = encode_packet_ascii(cmd, payload)
+                _LOGGER.debug("Sending cmd=%s payload=%s raw=%s", cmd, payload.hex(), encoded)
+                await self._client.write_gatt_char(self._tx_char, encoded, response=True)
 
-            encoded = encode_packet_ascii(cmd, payload)
-            _LOGGER.debug("Sending cmd=%s payload=%s raw=%s", cmd, payload.hex(), encoded)
-            await self._client.write_gatt_char(self._tx_char, encoded, response=True)
+                if not expect_response:
+                    return None
 
-            if not expect_response:
-                return None
+                def _match(item: tuple[int, bytes]) -> bool:
+                    return item[0] == cmd
 
-            def _match(item: tuple[int, bytes]) -> bool:
-                return item[0] == cmd
-
-            return await self._wait_for(_match, timeout=response_timeout)
+                return await self._wait_for(_match, timeout=response_timeout)
+            finally:
+                if disconnect_after and not was_connected:
+                    await self.async_disconnect()
 
     async def _wait_for(
         self, predicate: Callable[[tuple[int, bytes]], bool], timeout: float

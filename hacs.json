@@ -3,6 +3,6 @@
   "country": "FR",
   "homeassistant": "2024.8.0",
   "render_readme": true,
-  "domains": ["sensor", "button"],
+  "domains": ["sensor", "button", "switch"],
   "iot_class": "local_polling"
 }

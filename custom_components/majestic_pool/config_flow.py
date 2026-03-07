@@ -11,11 +11,15 @@ from homeassistant.core import callback
 from .const import (
     CONF_ACTION_COMMANDS,
     CONF_DIAGNOSTIC_COMMANDS,
+    CONF_CONNECT_ON_DEMAND,
+    CONF_ENABLE_TEMPERATURE_POLL,
     CONF_POLL_INTERVAL,
     CONF_SWITCH_DEFINITIONS,
     CONF_TEMPERATURE_COMMAND,
     CONF_VALUE_SENSOR_DEFINITIONS,
     DEFAULT_DIAGNOSTIC_COMMANDS,
+    DEFAULT_CONNECT_ON_DEMAND,
+    DEFAULT_ENABLE_TEMPERATURE_POLL,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_TEMPERATURE_COMMAND,
     DOMAIN,
@@ -215,6 +219,10 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DIAGNOSTIC_COMMANDS: _parse_cmd_list(
                         user_input[CONF_DIAGNOSTIC_COMMANDS]
                     ),
+                    CONF_ENABLE_TEMPERATURE_POLL: user_input[
+                        CONF_ENABLE_TEMPERATURE_POLL
+                    ],
+                    CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
                     ),
@@ -239,6 +247,14 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DIAGNOSTIC_COMMANDS,
                     default=_cmd_list_to_text(DEFAULT_DIAGNOSTIC_COMMANDS),
                 ): str,
+                vol.Required(
+                    CONF_ENABLE_TEMPERATURE_POLL,
+                    default=DEFAULT_ENABLE_TEMPERATURE_POLL,
+                ): bool,
+                vol.Required(
+                    CONF_CONNECT_ON_DEMAND,
+                    default=DEFAULT_CONNECT_ON_DEMAND,
+                ): bool,
                 vol.Optional(CONF_SWITCH_DEFINITIONS, default=""): str,
                 vol.Optional(CONF_VALUE_SENSOR_DEFINITIONS, default=""): str,
             }
@@ -273,6 +289,10 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_DIAGNOSTIC_COMMANDS: _parse_cmd_list(
                         user_input[CONF_DIAGNOSTIC_COMMANDS]
                     ),
+                    CONF_ENABLE_TEMPERATURE_POLL: user_input[
+                        CONF_ENABLE_TEMPERATURE_POLL
+                    ],
+                    CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
                     ),
@@ -306,6 +326,20 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                         cfg.get(CONF_DIAGNOSTIC_COMMANDS, DEFAULT_DIAGNOSTIC_COMMANDS)
                     ),
                 ): str,
+                vol.Required(
+                    CONF_ENABLE_TEMPERATURE_POLL,
+                    default=cfg.get(
+                        CONF_ENABLE_TEMPERATURE_POLL,
+                        DEFAULT_ENABLE_TEMPERATURE_POLL,
+                    ),
+                ): bool,
+                vol.Required(
+                    CONF_CONNECT_ON_DEMAND,
+                    default=cfg.get(
+                        CONF_CONNECT_ON_DEMAND,
+                        DEFAULT_CONNECT_ON_DEMAND,
+                    ),
+                ): bool,
                 vol.Optional(
                     CONF_SWITCH_DEFINITIONS,
                     default=_switches_to_text(cfg.get(CONF_SWITCH_DEFINITIONS, [])),

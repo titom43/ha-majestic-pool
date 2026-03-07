@@ -16,6 +16,8 @@ from .const import (
     ATTR_COMMAND,
     ATTR_ENTRY_ID,
     ATTR_PAYLOAD,
+    CONF_CONNECT_ON_DEMAND,
+    CONF_ENABLE_TEMPERATURE_POLL,
     DOMAIN,
     PLATFORMS,
     SERVICE_REFRESH,
@@ -66,9 +68,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = {
         "hub": hub,
         "coordinator": coordinator,
+        "config": config,
     }
 
-    await coordinator.async_config_entry_first_refresh()
+    if config.get(CONF_ENABLE_TEMPERATURE_POLL, True):
+        await coordinator.async_config_entry_first_refresh()
+    else:
+        coordinator.async_set_updated_data({"temperature_c": None})
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
     return True
@@ -117,10 +123,17 @@ def _parse_payload(raw: Any) -> bytes:
 def _make_service_send_command_handler(hass: HomeAssistant):
     async def _handler(call: ServiceCall) -> None:
         entry_id = _get_target_entry_id(hass, call)
-        hub: MajesticBleHub = hass.data[DOMAIN][entry_id]["hub"]
+        item = hass.data[DOMAIN][entry_id]
+        hub: MajesticBleHub = item["hub"]
+        config: dict[str, Any] = item.get("config", {})
         cmd = int(call.data[ATTR_COMMAND])
         payload = _parse_payload(call.data.get(ATTR_PAYLOAD, []))
-        await hub.async_send_command(cmd, payload, expect_response=False)
+        await hub.async_send_command(
+            cmd,
+            payload,
+            expect_response=False,
+            disconnect_after=bool(config.get(CONF_CONNECT_ON_DEMAND, True)),
+        )
 
     return _handler
 

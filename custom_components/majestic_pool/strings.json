@@ -11,6 +11,8 @@
           "temperature_command": "Temperature command byte",
           "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
           "diagnostic_commands": "Diagnostic poll commands (hex list)",
+          "enable_temperature_poll": "Enable periodic temperature polling",
+          "connect_on_demand": "Connect BLE only for action/poll",
           "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
           "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
         }
@@ -26,6 +28,8 @@
           "temperature_command": "Temperature command byte",
           "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
           "diagnostic_commands": "Diagnostic poll commands (hex list)",
+          "enable_temperature_poll": "Enable periodic temperature polling",
+          "connect_on_demand": "Connect BLE only for action/poll",
           "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
           "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
         }
