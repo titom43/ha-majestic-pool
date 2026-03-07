@@ -37,7 +37,7 @@ Intégration Home Assistant (Custom Component) pour piloter un coffret **Majesti
 
 - `address`: adresse MAC BLE du boîtier
 - `poll_interval`: fréquence de polling (secondes)
-- `temperature_command`: commande de lecture température (défaut `0x22`)
+- `temperature_command`: commande de lecture température (défaut `0x02`)
 - `enable_temperature_poll`: active/désactive le polling périodique
 - `connect_on_demand`: se connecte uniquement pour action/poll puis se déconnecte
 
@@ -48,10 +48,10 @@ Champ `action_commands`:
 `Label:cmd_hex[:payload_hex],Label2:7a`
 
 Exemples (préremplis par défaut):
-- `Projecteur toggle:23`
-- `Pompe manuel:35`
-- `Pompe auto:36`
-- `Pompe boost:37`
+- `Sortie 0x1E ON:1e:01`
+- `Sortie 0x1E OFF:1e:00`
+- `Sortie 0x06 ON:06:01`
+- `Sortie 0x06 OFF:06:00`
 
 ### Switches configurables
 
@@ -60,8 +60,8 @@ Champ `switch_definitions`:
 `Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value`
 
 Exemples (préremplis par défaut):
-- `Projecteur|23||23|||`
-- `Pompe Auto|36||35|||`
+- `Sortie 0x1E|1e|01|1e|00||`
+- `Sortie 0x06|06|01|06|00||`
 
 Notes:
 - `state_cmd` et `on_value` sont optionnels.
@@ -74,14 +74,14 @@ Champ `value_sensor_definitions`:
 `Label|cmd|byte_index|scale`
 
 Exemples (préremplis par défaut):
-- `Courant pompe|27|0|0.1`
-- `Courant booster|27|1|0.1`
+- `Courant pompe|65|0|0.1`
+- `Courant booster|65|1|0.1`
 
 ### Commandes diagnostics
 
 Champ `diagnostic_commands` (liste hex):
 
-`2d,27,03,04,64,6e`
+`03,04,64,65,66,6e`
 
 ## Services Home Assistant
 
@@ -103,19 +103,19 @@ Champ `diagnostic_commands` (liste hex):
 - Pairing characteristic (à intégrer complètement): `569a2004-b87f-490c-92cb-11ba5ea5167c`
 - CRC: `((sum(bytes) & 0xFF) ^ 0xFF) + 1`
 
-## Mapping commandes (actuel)
+## Mapping commandes (trace Frida)
 
-- `0x23`: toggle projecteur
-- `0x35`: pompe manuel
-- `0x36`: pompe auto
-- `0x37`: pompe boost
-- `0x2d`: lecture statut pompe
-- `0x27`: lecture courants pompe/booster
-- `0x22`: lecture température
+- `0x02`: lecture température
+- `0x03`: lecture mode
+- `0x04`: lecture paramètres lumière
+- `0x64`, `0x65`, `0x66`, `0x6E`: lectures de statut/diagnostic
+- `0x1E` + payload `01/00`: commande ON/OFF observée
+- `0x06` + payload `01/00`: commande ON/OFF observée
 
 ## Limites actuelles
 
 - Le workflow d'appairage avancé (manip physique + séquence BLE spécifique) n'est pas encore entièrement automatisé côté intégration.
+- L'affectation métier précise (`projecteur` vs `pompe`) entre `0x1E` et `0x06` reste à confirmer.
 - L'échelle exacte des courants (`A`, `0.1A`, etc.) reste à confirmer définitivement selon captures terrain.
 
 ## Support / Contribution
