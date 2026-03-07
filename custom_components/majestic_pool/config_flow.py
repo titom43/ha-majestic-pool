@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import voluptuous as vol
 
 from homeassistant.components import bluetooth
@@ -287,20 +288,30 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 pairing_timeout=DEFAULT_PAIRING_TIMEOUT,
                 device_name_prefix=prefix,
             )
-            try:
-                await hub.async_connect()
-                await hub.async_disconnect()
-            except Exception as err:  # noqa: BLE001
-                msg = str(err).lower()
+            last_err: Exception | None = None
+            for _attempt in range(2):
+                try:
+                    await hub.async_connect()
+                    await hub.async_disconnect()
+                    last_err = None
+                    break
+                except Exception as err:  # noqa: BLE001
+                    last_err = err
+                    await hub.async_disconnect()
+                    await asyncio.sleep(2)
+
+            if last_err is not None:
+                msg = str(last_err).lower()
                 if "appairage" in msg or "pairing" in msg:
                     ble_hint = (
-                        "Echec appairage: mettez le boitier en mode appairage, "
-                        "selectionnez le boitier detecte, puis relancez la validation."
+                        "Echec appairage: activez le mode appairage sur le boitier, "
+                        "puis validez rapidement. Fermez aussi l'app mobile Majestic."
                     )
                 else:
                     ble_hint = (
-                        "Connexion impossible. Verifiez que le boitier est allume, "
-                        "en mode appairage, proche du dongle BLE, et non connecte a l'app mobile."
+                        "Connexion impossible. Verifiez: boitier allume, mode appairage actif, "
+                        "proximite BLE, et aucune connexion concurrente (telephone/app). "
+                        f"Detail: {last_err}"
                     )
                 errors["base"] = "cannot_connect"
                 return self.async_show_form(
