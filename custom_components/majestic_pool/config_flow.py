@@ -12,7 +12,9 @@ from .const import (
     CONF_ACTION_COMMANDS,
     CONF_DIAGNOSTIC_COMMANDS,
     CONF_POLL_INTERVAL,
+    CONF_SWITCH_DEFINITIONS,
     CONF_TEMPERATURE_COMMAND,
+    CONF_VALUE_SENSOR_DEFINITIONS,
     DEFAULT_DIAGNOSTIC_COMMANDS,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_TEMPERATURE_COMMAND,
@@ -92,6 +94,103 @@ def _cmd_list_to_text(values: list[int]) -> str:
     return ", ".join(f"{v:02x}" for v in values)
 
 
+def _parse_switches(raw: str) -> list[dict[str, object]]:
+    """Parse switches from:
+    Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value, ...
+    """
+    switches: list[dict[str, object]] = []
+    if not raw.strip():
+        return switches
+
+    for item in raw.split(","):
+        part = item.strip()
+        if not part:
+            continue
+        fields = [f.strip() for f in part.split("|")]
+        if len(fields) < 4:
+            continue
+        try:
+            label = fields[0]
+            on_cmd = int(fields[1], 16)
+            on_payload = bytes.fromhex(fields[2]) if fields[2] else b""
+            off_cmd = int(fields[3], 16)
+            off_payload = bytes.fromhex(fields[4]) if len(fields) > 4 and fields[4] else b""
+            state_cmd = int(fields[5], 16) if len(fields) > 5 and fields[5] else None
+            on_value = fields[6].lower() if len(fields) > 6 and fields[6] else None
+        except ValueError:
+            continue
+        switches.append(
+            {
+                "label": label,
+                "on_cmd": on_cmd,
+                "on_payload": on_payload.hex(),
+                "off_cmd": off_cmd,
+                "off_payload": off_payload.hex(),
+                "state_cmd": state_cmd,
+                "on_value": on_value,
+            }
+        )
+    return switches
+
+
+def _switches_to_text(items: list[dict[str, object]]) -> str:
+    chunks: list[str] = []
+    for it in items:
+        chunks.append(
+            "|".join(
+                [
+                    str(it.get("label", "Switch")),
+                    f"{int(it.get('on_cmd', 0)):02x}",
+                    str(it.get("on_payload", "")),
+                    f"{int(it.get('off_cmd', 0)):02x}",
+                    str(it.get("off_payload", "")),
+                    f"{int(it.get('state_cmd')):02x}" if it.get("state_cmd") is not None else "",
+                    str(it.get("on_value", "")),
+                ]
+            )
+        )
+    return ", ".join(chunks)
+
+
+def _parse_value_sensors(raw: str) -> list[dict[str, object]]:
+    """Parse value sensors from: Label|cmd|index|scale."""
+    sensors: list[dict[str, object]] = []
+    if not raw.strip():
+        return sensors
+    for item in raw.split(","):
+        part = item.strip()
+        if not part:
+            continue
+        fields = [f.strip() for f in part.split("|")]
+        if len(fields) < 3:
+            continue
+        try:
+            label = fields[0]
+            cmd = int(fields[1], 16)
+            index = int(fields[2])
+            scale = float(fields[3]) if len(fields) > 3 and fields[3] else 1.0
+        except ValueError:
+            continue
+        sensors.append({"label": label, "cmd": cmd, "index": index, "scale": scale})
+    return sensors
+
+
+def _value_sensors_to_text(items: list[dict[str, object]]) -> str:
+    chunks: list[str] = []
+    for it in items:
+        chunks.append(
+            "|".join(
+                [
+                    str(it.get("label", "Value")),
+                    f"{int(it.get('cmd', 0)):02x}",
+                    str(int(it.get("index", 0))),
+                    str(float(it.get("scale", 1.0))),
+                ]
+            )
+        )
+    return ", ".join(chunks)
+
+
 class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Majestic Pool config flow."""
 
@@ -116,6 +215,12 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DIAGNOSTIC_COMMANDS: _parse_cmd_list(
                         user_input[CONF_DIAGNOSTIC_COMMANDS]
                     ),
+                    CONF_SWITCH_DEFINITIONS: _parse_switches(
+                        user_input[CONF_SWITCH_DEFINITIONS]
+                    ),
+                    CONF_VALUE_SENSOR_DEFINITIONS: _parse_value_sensors(
+                        user_input[CONF_VALUE_SENSOR_DEFINITIONS]
+                    ),
                 },
             )
 
@@ -134,6 +239,8 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DIAGNOSTIC_COMMANDS,
                     default=_cmd_list_to_text(DEFAULT_DIAGNOSTIC_COMMANDS),
                 ): str,
+                vol.Optional(CONF_SWITCH_DEFINITIONS, default=""): str,
+                vol.Optional(CONF_VALUE_SENSOR_DEFINITIONS, default=""): str,
             }
         )
 
@@ -166,6 +273,12 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_DIAGNOSTIC_COMMANDS: _parse_cmd_list(
                         user_input[CONF_DIAGNOSTIC_COMMANDS]
                     ),
+                    CONF_SWITCH_DEFINITIONS: _parse_switches(
+                        user_input[CONF_SWITCH_DEFINITIONS]
+                    ),
+                    CONF_VALUE_SENSOR_DEFINITIONS: _parse_value_sensors(
+                        user_input[CONF_VALUE_SENSOR_DEFINITIONS]
+                    ),
                 },
             )
 
@@ -191,6 +304,16 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_DIAGNOSTIC_COMMANDS,
                     default=_cmd_list_to_text(
                         cfg.get(CONF_DIAGNOSTIC_COMMANDS, DEFAULT_DIAGNOSTIC_COMMANDS)
+                    ),
+                ): str,
+                vol.Optional(
+                    CONF_SWITCH_DEFINITIONS,
+                    default=_switches_to_text(cfg.get(CONF_SWITCH_DEFINITIONS, [])),
+                ): str,
+                vol.Optional(
+                    CONF_VALUE_SENSOR_DEFINITIONS,
+                    default=_value_sensors_to_text(
+                        cfg.get(CONF_VALUE_SENSOR_DEFINITIONS, [])
                     ),
                 ): str,
             }

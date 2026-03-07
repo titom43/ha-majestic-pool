@@ -10,7 +10,9 @@
           "poll_interval": "Poll interval (seconds)",
           "temperature_command": "Temperature command byte",
           "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
-          "diagnostic_commands": "Diagnostic poll commands (hex list)"
+          "diagnostic_commands": "Diagnostic poll commands (hex list)",
+          "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
+          "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
         }
       }
     }
@@ -23,7 +25,9 @@
           "poll_interval": "Poll interval (seconds)",
           "temperature_command": "Temperature command byte",
           "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
-          "diagnostic_commands": "Diagnostic poll commands (hex list)"
+          "diagnostic_commands": "Diagnostic poll commands (hex list)",
+          "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
+          "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
         }
       }
     }

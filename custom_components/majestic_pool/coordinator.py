@@ -22,7 +22,7 @@ from .majestic_ble import MajesticBleHub
 _LOGGER = logging.getLogger(__name__)
 
 
-class MajesticCoordinator(DataUpdateCoordinator[dict[str, float | None]]):
+class MajesticCoordinator(DataUpdateCoordinator[dict[str, float | str | None]]):
     """Fetch data from Majestic controller."""
 
     def __init__(self, hass: HomeAssistant, hub: MajesticBleHub, config: dict) -> None:
@@ -41,7 +41,7 @@ class MajesticCoordinator(DataUpdateCoordinator[dict[str, float | None]]):
             update_interval=timedelta(seconds=max(5, poll_interval)),
         )
 
-    async def _async_update_data(self) -> dict[str, float | None]:
+    async def _async_update_data(self) -> dict[str, float | str | None]:
         try:
             temperature = await self.hub.async_get_temperature(self._temperature_cmd)
             data: dict[str, float | str | None] = {"temperature_c": temperature}

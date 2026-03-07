@@ -8,6 +8,8 @@ Integration Home Assistant (custom component HACS) pour piloter un coffret Majes
 - Encodage/décodage du protocole `:<size><cmd><payload><crc>`.
 - Capteur `sensor.water_temperature` (commande par défaut `0x02`).
 - Capteurs diagnostics bruts (désactivés par défaut) pour `cmd 0x03/0x04/0x64/0x6e`.
+- Switches configurables (`switch`) via commandes on/off.
+- Capteurs de valeur configurables (`sensor`) extraits des payloads BLE.
 - Boutons d'action configurables.
 - Services pour envoyer des commandes brutes.
 
@@ -29,6 +31,30 @@ Exemples:
 - `Pump Boost:41`
 - `Freeze On:50:01`
 - `Freeze Off:50:00`
+
+## Configuration switches
+
+Champ `switch_definitions`:
+
+`Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value`
+
+Exemple:
+- `Pompe|33|01|33|00|03|01`
+- `Projecteur LED|34|01|34|00|04|01`
+
+Notes:
+- `state_cmd` et `on_value` sont optionnels.
+- Si `state_cmd`/`on_value` sont absents, le switch reste en mode `assumed_state`.
+
+## Configuration value sensors
+
+Champ `value_sensor_definitions`:
+
+`Label|cmd|byte_index|scale`
+
+Exemple:
+- `Temp brute cmd02|02|2|1`
+- `Courant pompe|64|3|0.1`
 
 ## Services
 
