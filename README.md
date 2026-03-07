@@ -2,6 +2,8 @@
 
 Intégration Home Assistant (Custom Component) pour piloter un coffret **Majestic** via Bluetooth Low Energy (BLE).
 
+![Majestic Pool Icon](./icon.svg)
+
 > Statut: projet communautaire en cours de finalisation du workflow d'appairage avancé.
 
 ## Fonctionnalités

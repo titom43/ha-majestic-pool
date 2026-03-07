@@ -1,0 +1,45 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Majestic Pool",
+        "description": "Configure your Majestic controller over Bluetooth.",
+        "data": {
+          "name": "Name",
+          "address": "BLE address",
+          "poll_interval": "Polling interval (seconds)",
+          "temperature_command": "Temperature command byte",
+          "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
+          "diagnostic_commands": "Diagnostic commands (hex list)",
+          "enable_temperature_poll": "Enable periodic polling",
+          "connect_on_demand": "Connect on demand",
+          "enable_pairing_probe": "Validate pairing before send",
+          "pairing_timeout": "Pairing validation timeout (seconds)",
+          "device_name_prefix": "Fallback BLE name prefix (e.g. KKTO_)",
+          "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
+          "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Majestic Pool options",
+        "data": {
+          "poll_interval": "Polling interval (seconds)",
+          "temperature_command": "Temperature command byte",
+          "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
+          "diagnostic_commands": "Diagnostic commands (hex list)",
+          "enable_temperature_poll": "Enable periodic polling",
+          "connect_on_demand": "Connect on demand",
+          "enable_pairing_probe": "Validate pairing before send",
+          "pairing_timeout": "Pairing validation timeout (seconds)",
+          "device_name_prefix": "Fallback BLE name prefix (e.g. KKTO_)",
+          "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
+          "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
+        }
+      }
+    }
+  }
+}
