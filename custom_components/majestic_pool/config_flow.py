@@ -313,11 +313,12 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "proximite BLE, et aucune connexion concurrente (telephone/app). "
                         f"Detail: {last_err}"
                     )
+                _LOGGER.warning("Majestic pairing validation failed: %s", last_err)
                 ble_hint = error_text
                 return self.async_show_form(
                     step_id="user",
                     data_schema=schema,
-                    errors={"base": error_text},
+                    errors={},
                     description_placeholders={"ble_hint": ble_hint},
                 )
 
