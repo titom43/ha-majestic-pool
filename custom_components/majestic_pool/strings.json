@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Majestic Pool",
-        "description": "Quick setup: select a detected controller or use fallback prefix discovery. {ble_hint}",
+        "description": "Quick setup: put the controller in pairing mode, then select a detected device or use fallback prefix discovery. {ble_hint}",
         "data": {
           "name": "Name",
           "discovered_device": "Detected controller (recommended)",

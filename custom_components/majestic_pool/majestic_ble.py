@@ -166,9 +166,11 @@ class MajesticBleHub:
 
         if last_error is not None:
             raise RuntimeError(
-                "Pairing BLE Majestic non valide dans le délai imparti"
+                "Appairage BLE non valide: mettez le boitier Majestic en mode appairage puis relancez."
             ) from last_error
-        raise RuntimeError("Pairing BLE Majestic non valide dans le délai imparti")
+        raise RuntimeError(
+            "Appairage BLE non valide: mettez le boitier Majestic en mode appairage puis relancez."
+        )
 
     async def async_disconnect(self) -> None:
         """Disconnect the BLE client."""
