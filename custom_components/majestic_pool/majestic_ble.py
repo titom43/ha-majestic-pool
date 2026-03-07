@@ -118,10 +118,18 @@ class MajesticBleHub:
     async def _async_establish_client(self, address: str) -> BleakClient:
         """Create/connect a Bleak client, preferring bleak-retry-connector in HA."""
         if establish_connection is not None:
+            device: BLEDevice | str = address
             try:
-                return await establish_connection(BleakClient, address, address)
+                found = await BleakScanner.find_device_by_address(address, timeout=5.0)
+                if found is not None:
+                    device = found
             except Exception as err:  # noqa: BLE001
-                _LOGGER.debug("bleak-retry-connector failed for %s: %s", address, err)
+                _LOGGER.debug(
+                    "Could not resolve BLEDevice for %s, using address fallback: %s",
+                    address,
+                    err,
+                )
+            return await establish_connection(BleakClient, device, address)
 
         client = BleakClient(address)
         await client.connect()

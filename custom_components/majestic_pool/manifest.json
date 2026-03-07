@@ -5,7 +5,7 @@
   "config_flow": true,
   "documentation": "https://github.com/titom43/ha-majestic-pool",
   "iot_class": "local_polling",
-  "requirements": ["bleak>=0.22.0"],
+  "requirements": ["bleak>=0.22.0", "bleak-retry-connector>=3.6.0"],
   "bluetooth": [
     {
       "service_uuid": "569a1101-b87f-490c-92cb-11ba5ea5167c"
