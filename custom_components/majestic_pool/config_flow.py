@@ -290,20 +290,29 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 pairing_timeout=DEFAULT_PAIRING_TIMEOUT,
                 device_name_prefix=prefix,
             )
-            last_err: Exception | None = None
-            for _attempt in range(1):
-                try:
-                    await hub.async_connect(require_pairing_ready=True)
-                    await hub.async_disconnect()
-                    last_err = None
-                    break
-                except Exception as err:  # noqa: BLE001
-                    last_err = err
-                    await hub.async_disconnect()
-                    await asyncio.sleep(1)
+            pairing_err: Exception | None = None
+            connect_err: Exception | None = None
 
-            if last_err is not None:
-                msg = str(last_err).lower()
+            try:
+                await hub.async_connect(require_pairing_ready=True)
+            except Exception as err:  # noqa: BLE001
+                pairing_err = err
+            finally:
+                await hub.async_disconnect()
+
+            # Fallback: accept entry creation if BLE transport is reachable,
+            # even when pairing sentinel is not exposed reliably by this firmware.
+            if pairing_err is not None:
+                await asyncio.sleep(0.5)
+                try:
+                    await hub.async_connect(require_pairing_ready=False)
+                except Exception as err:  # noqa: BLE001
+                    connect_err = err
+                finally:
+                    await hub.async_disconnect()
+
+            if pairing_err is not None and connect_err is not None:
+                msg = str(connect_err).lower()
                 if "appairage" in msg or "pairing" in msg:
                     error_text = (
                         "Echec appairage: activez le mode appairage sur le boitier, "
@@ -314,15 +323,30 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     error_text = (
                         "Connexion impossible. Verifiez: boitier allume, mode appairage actif, "
                         "proximite BLE, et aucune connexion concurrente (telephone/app). "
-                        f"Detail: {last_err}"
+                        f"Detail: {connect_err}"
                     )
-                _LOGGER.warning("Majestic pairing validation failed: %s", last_err)
+                _LOGGER.warning(
+                    "Majestic validation failed addr=%s prefix=%s pairing_err=%s connect_err=%s",
+                    address,
+                    prefix,
+                    pairing_err,
+                    connect_err,
+                )
                 ble_hint = error_text
                 return self.async_show_form(
                     step_id="user",
                     data_schema=schema,
                     errors={},
                     description_placeholders={"ble_hint": ble_hint},
+                )
+
+            if pairing_err is not None and connect_err is None:
+                _LOGGER.warning(
+                    "Majestic pairing probe failed but BLE transport is reachable "
+                    "(addr=%s, prefix=%s): %s",
+                    address,
+                    prefix,
+                    pairing_err,
                 )
 
             return self.async_create_entry(
