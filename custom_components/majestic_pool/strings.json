@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Majestic Pool",
+        "description": "Configure your Majestic pool controller over BLE.",
+        "data": {
+          "name": "Name",
+          "address": "BLE address",
+          "poll_interval": "Poll interval (seconds)",
+          "temperature_command": "Temperature command byte",
+          "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
+          "diagnostic_commands": "Diagnostic poll commands (hex list)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Majestic Pool options",
+        "data": {
+          "poll_interval": "Poll interval (seconds)",
+          "temperature_command": "Temperature command byte",
+          "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
+          "diagnostic_commands": "Diagnostic poll commands (hex list)"
+        }
+      }
+    }
+  }
+}
