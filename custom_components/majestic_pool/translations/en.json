@@ -3,17 +3,22 @@
     "step": {
       "user": {
         "title": "Majestic Pool",
-        "description": "Quick setup. Advanced protocol settings are available later in integration options.",
+        "description": "Quick setup. Select a detected controller, or enter BLE address manually.",
         "data": {
           "name": "Name",
-          "address": "Controller BLE address",
+          "discovered_device": "Detected controller (recommended)",
+          "address": "Manual BLE address (fallback)",
           "poll_interval": "Refresh interval (seconds)"
         },
         "data_description": {
+          "discovered_device": "Automatically discovered controller (e.g. KKTO_...).",
           "address": "Bluetooth MAC address of the Majestic controller (format XX:XX:XX:XX:XX:XX).",
           "poll_interval": "Example: 30 = 30 seconds (not 30 minutes)."
         }
       }
+    },
+    "error": {
+      "address_required": "Select a detected controller or enter a BLE address."
     }
   },
   "options": {

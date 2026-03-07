@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import voluptuous as vol
 
+from homeassistant.components import bluetooth
 from homeassistant import config_entries
 from homeassistant.const import CONF_ADDRESS, CONF_NAME
 from homeassistant.core import callback
@@ -35,9 +36,18 @@ from .const import (
     NAME,
 )
 
+MAJESTIC_SERVICE_UUID = "569a1101-b87f-490c-92cb-11ba5ea5167c"
+CONF_DISCOVERED_DEVICE = "discovered_device"
+
 
 def _clamp(value: int, minimum: int, maximum: int) -> int:
     return max(minimum, min(maximum, value))
+
+
+def _friendly_name(name: str | None) -> str:
+    if not name:
+        return "Majestic"
+    return name
 
 
 def _parse_actions(raw: str) -> list[dict[str, object]]:
@@ -215,40 +225,58 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input: dict | None = None):
         errors: dict[str, str] = {}
+        discovered_options: list[str] = []
+        discovered_map: dict[str, str] = {}
+
+        for info in bluetooth.async_discovered_service_info(self.hass):
+            uuids = [u.lower() for u in (info.service_uuids or [])]
+            name = getattr(info, "name", None) or getattr(info, "local_name", None)
+            if MAJESTIC_SERVICE_UUID in uuids or (name and name.startswith("KKTO_")):
+                label = f"{_friendly_name(name)} ({info.address})"
+                if info.address.lower() not in {a.lower() for a in discovered_map.values()}:
+                    discovered_options.append(label)
+                    discovered_map[label] = info.address
 
         if user_input is not None:
-            address = user_input[CONF_ADDRESS].strip()
-            await self.async_set_unique_id(address.lower())
-            self._abort_if_unique_id_configured()
+            selected = str(user_input.get(CONF_DISCOVERED_DEVICE, "")).strip()
+            manual = str(user_input.get(CONF_ADDRESS, "")).strip()
+            address = discovered_map.get(selected, manual).strip()
+            if not address:
+                errors["base"] = "address_required"
+            else:
+                await self.async_set_unique_id(address.lower())
+                self._abort_if_unique_id_configured()
 
-            return self.async_create_entry(
-                title=user_input[CONF_NAME],
-                data={
-                    CONF_NAME: user_input[CONF_NAME],
-                    CONF_ADDRESS: address,
-                    CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
-                    CONF_TEMPERATURE_COMMAND: DEFAULT_TEMPERATURE_COMMAND,
-                    CONF_ACTION_COMMANDS: DEFAULT_ACTION_COMMANDS,
-                    CONF_DIAGNOSTIC_COMMANDS: DEFAULT_DIAGNOSTIC_COMMANDS,
-                    CONF_ENABLE_TEMPERATURE_POLL: DEFAULT_ENABLE_TEMPERATURE_POLL,
-                    CONF_CONNECT_ON_DEMAND: DEFAULT_CONNECT_ON_DEMAND,
-                    CONF_ENABLE_PAIRING_PROBE: DEFAULT_ENABLE_PAIRING_PROBE,
-                    CONF_PAIRING_TIMEOUT: DEFAULT_PAIRING_TIMEOUT,
-                    CONF_DEVICE_NAME_PREFIX: DEFAULT_DEVICE_NAME_PREFIX,
-                    CONF_SWITCH_DEFINITIONS: DEFAULT_SWITCH_DEFINITIONS,
-                    CONF_VALUE_SENSOR_DEFINITIONS: DEFAULT_VALUE_SENSOR_DEFINITIONS,
-                },
-            )
+                return self.async_create_entry(
+                    title=user_input[CONF_NAME],
+                    data={
+                        CONF_NAME: user_input[CONF_NAME],
+                        CONF_ADDRESS: address,
+                        CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
+                        CONF_TEMPERATURE_COMMAND: DEFAULT_TEMPERATURE_COMMAND,
+                        CONF_ACTION_COMMANDS: DEFAULT_ACTION_COMMANDS,
+                        CONF_DIAGNOSTIC_COMMANDS: DEFAULT_DIAGNOSTIC_COMMANDS,
+                        CONF_ENABLE_TEMPERATURE_POLL: DEFAULT_ENABLE_TEMPERATURE_POLL,
+                        CONF_CONNECT_ON_DEMAND: DEFAULT_CONNECT_ON_DEMAND,
+                        CONF_ENABLE_PAIRING_PROBE: DEFAULT_ENABLE_PAIRING_PROBE,
+                        CONF_PAIRING_TIMEOUT: DEFAULT_PAIRING_TIMEOUT,
+                        CONF_DEVICE_NAME_PREFIX: DEFAULT_DEVICE_NAME_PREFIX,
+                        CONF_SWITCH_DEFINITIONS: DEFAULT_SWITCH_DEFINITIONS,
+                        CONF_VALUE_SENSOR_DEFINITIONS: DEFAULT_VALUE_SENSOR_DEFINITIONS,
+                    },
+                )
 
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_NAME, default=NAME): str,
-                vol.Required(CONF_ADDRESS): str,
-                vol.Required(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): vol.All(
-                    int, vol.Range(min=5, max=300)
-                ),
-            }
-        )
+        schema_dict: dict = {
+            vol.Required(CONF_NAME, default=NAME): str,
+            vol.Required(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): vol.All(
+                int, vol.Range(min=5, max=300)
+            ),
+            vol.Optional(CONF_ADDRESS): str,
+        }
+        if discovered_options:
+            schema_dict[vol.Optional(CONF_DISCOVERED_DEVICE)] = vol.In(discovered_options)
+
+        schema = vol.Schema(schema_dict)
 
         return self.async_show_form(
             step_id="user",

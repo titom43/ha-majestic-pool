@@ -3,17 +3,22 @@
     "step": {
       "user": {
         "title": "Majestic Pool",
-        "description": "Configuration rapide. Les réglages avancés (commandes/switch/capteurs) sont disponibles ensuite dans les options de l'intégration.",
+        "description": "Configuration rapide. Sélectionnez un boîtier détecté, ou saisissez l'adresse BLE manuellement.",
         "data": {
           "name": "Nom",
-          "address": "Adresse BLE du boîtier",
+          "discovered_device": "Boîtier détecté (recommandé)",
+          "address": "Adresse BLE manuelle (secours)",
           "poll_interval": "Intervalle de rafraîchissement (secondes)"
         },
         "data_description": {
+          "discovered_device": "Boîtier trouvé automatiquement (ex: KKTO_...).",
           "address": "Adresse MAC Bluetooth du boîtier Majestic (format XX:XX:XX:XX:XX:XX).",
           "poll_interval": "Exemple: 30 = 30 secondes (pas 30 minutes)."
         }
       }
+    },
+    "error": {
+      "address_required": "Sélectionnez un boîtier détecté ou saisissez une adresse BLE."
     }
   },
   "options": {
@@ -39,7 +44,7 @@
           "connect_on_demand": "Se connecte uniquement pour une action/lecture puis se déconnecte, pour limiter le blocage du boîtier physique.",
           "enable_pairing_probe": "Teste la characteristic d'appairage avant d'envoyer les commandes.",
           "pairing_timeout": "Durée maximale d'attente de l'état d'appairage valide.",
-          "device_name_prefix": "Préfixe de nom BLE utilisé si l'adresse configurée échoue. Non, pas besoin du nom complet."
+          "device_name_prefix": "Préfixe de nom BLE utilisé si l'adresse configurée échoue. Pas besoin du nom complet."
         }
       }
     }
