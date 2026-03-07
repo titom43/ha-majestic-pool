@@ -303,20 +303,21 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if last_err is not None:
                 msg = str(last_err).lower()
                 if "appairage" in msg or "pairing" in msg:
-                    ble_hint = (
+                    error_text = (
                         "Echec appairage: activez le mode appairage sur le boitier, "
-                        "puis validez rapidement. Fermez aussi l'app mobile Majestic."
+                        "selectionnez le boitier detecte, puis validez rapidement."
                     )
                 else:
-                    ble_hint = (
+                    error_text = (
                         "Connexion impossible. Verifiez: boitier allume, mode appairage actif, "
                         "proximite BLE, et aucune connexion concurrente (telephone/app). "
                         f"Detail: {last_err}"
                     )
+                ble_hint = error_text
                 return self.async_show_form(
                     step_id="user",
                     data_schema=schema,
-                    errors={},
+                    errors={"base": error_text},
                     description_placeholders={"ble_hint": ble_hint},
                 )
 
