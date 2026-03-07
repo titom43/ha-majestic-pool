@@ -289,7 +289,7 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 device_name_prefix=prefix,
             )
             last_err: Exception | None = None
-            for _attempt in range(2):
+            for _attempt in range(1):
                 try:
                     await hub.async_connect()
                     await hub.async_disconnect()
@@ -298,7 +298,7 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 except Exception as err:  # noqa: BLE001
                     last_err = err
                     await hub.async_disconnect()
-                    await asyncio.sleep(2)
+                    await asyncio.sleep(1)
 
             if last_err is not None:
                 msg = str(last_err).lower()

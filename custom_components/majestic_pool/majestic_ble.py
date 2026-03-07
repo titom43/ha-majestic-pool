@@ -120,7 +120,7 @@ class MajesticBleHub:
         if establish_connection is not None:
             device: BLEDevice | str = address
             try:
-                found = await BleakScanner.find_device_by_address(address, timeout=5.0)
+                found = await BleakScanner.find_device_by_address(address, timeout=2.0)
                 if found is not None:
                     device = found
             except Exception as err:  # noqa: BLE001
@@ -140,7 +140,7 @@ class MajesticBleHub:
         if not self._device_name_prefix:
             return None
 
-        devices = await BleakScanner.discover(timeout=8.0)
+        devices = await BleakScanner.discover(timeout=3.0)
         for dev in devices:
             if not isinstance(dev, BLEDevice):
                 continue
