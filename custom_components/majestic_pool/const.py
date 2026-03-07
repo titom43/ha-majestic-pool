@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from homeassistant.const import Platform
+from homeassistant.const import CONF_ADDRESS as HA_CONF_ADDRESS, Platform
 
 DOMAIN = "majestic_pool"
 NAME = "Majestic Pool"
 
+# Backward compatibility for older module imports.
+CONF_ADDRESS = HA_CONF_ADDRESS
 CONF_POLL_INTERVAL = "poll_interval"
 CONF_TEMPERATURE_COMMAND = "temperature_command"
 CONF_ACTION_COMMANDS = "action_commands"
