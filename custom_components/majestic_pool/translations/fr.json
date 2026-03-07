@@ -3,29 +3,22 @@
     "step": {
       "user": {
         "title": "Majestic Pool",
-        "description": "Configuration rapide. Sélectionnez un boîtier détecté, ou saisissez l'adresse BLE manuellement.",
+        "description": "Configuration rapide: sélectionnez un boîtier détecté, ou utilisez la découverte par préfixe.",
         "data": {
           "name": "Nom",
           "discovered_device": "Boîtier détecté (recommandé)",
-          "address": "Adresse BLE manuelle (secours)",
+          "address": "Adresse BLE manuelle (optionnel)",
+          "device_name_prefix": "Préfixe BLE de secours (ex: KKTO_)",
           "poll_interval": "Intervalle de rafraîchissement (secondes)"
-        },
-        "data_description": {
-          "discovered_device": "Boîtier trouvé automatiquement (ex: KKTO_...).",
-          "address": "Adresse MAC Bluetooth du boîtier Majestic (format XX:XX:XX:XX:XX:XX).",
-          "poll_interval": "Exemple: 30 = 30 secondes (pas 30 minutes)."
         }
       }
-    },
-    "error": {
-      "address_required": "Sélectionnez un boîtier détecté ou saisissez une adresse BLE."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Options Majestic Pool",
-        "description": "Paramètres avancés du protocole BLE. Laissez les valeurs par défaut si vous n'êtes pas en phase de reverse engineering.",
+        "description": "Paramètres avancés du protocole BLE.",
         "data": {
           "poll_interval": "Intervalle de rafraîchissement (secondes)",
           "temperature_command": "Commande température (octet)",
@@ -38,13 +31,6 @@
           "device_name_prefix": "Préfixe BLE de secours (ex: KKTO_)",
           "switch_definitions": "Switches (Libellé|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
           "value_sensor_definitions": "Capteurs valeur (Libellé|cmd|index_octet|échelle)"
-        },
-        "data_description": {
-          "temperature_command": "Commande de lecture température. Laisser 2 (0x02) sauf besoin spécifique.",
-          "connect_on_demand": "Se connecte uniquement pour une action/lecture puis se déconnecte, pour limiter le blocage du boîtier physique.",
-          "enable_pairing_probe": "Teste la characteristic d'appairage avant d'envoyer les commandes.",
-          "pairing_timeout": "Durée maximale d'attente de l'état d'appairage valide.",
-          "device_name_prefix": "Préfixe de nom BLE utilisé si l'adresse configurée échoue. Pas besoin du nom complet."
         }
       }
     }

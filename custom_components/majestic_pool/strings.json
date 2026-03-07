@@ -3,21 +3,13 @@
     "step": {
       "user": {
         "title": "Majestic Pool",
-        "description": "Configure your Majestic pool controller over BLE.",
+        "description": "Quick setup: select a detected controller or use fallback prefix discovery.",
         "data": {
           "name": "Name",
-          "address": "BLE address",
-          "poll_interval": "Poll interval (seconds)",
-          "temperature_command": "Temperature command byte",
-          "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
-          "diagnostic_commands": "Diagnostic poll commands (hex list)",
-          "enable_temperature_poll": "Enable periodic temperature polling",
-          "connect_on_demand": "Connect BLE only for action/poll",
-          "enable_pairing_probe": "Validate pairing before commands",
-          "pairing_timeout": "Pairing validation timeout (seconds)",
-          "device_name_prefix": "BLE name prefix fallback (e.g. KKTO_)",
-          "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
-          "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
+          "discovered_device": "Detected controller (recommended)",
+          "address": "Manual BLE address (optional)",
+          "device_name_prefix": "Fallback BLE name prefix (e.g. KKTO_)",
+          "poll_interval": "Refresh interval (seconds)"
         }
       }
     }
@@ -27,15 +19,15 @@
       "init": {
         "title": "Majestic Pool options",
         "data": {
-          "poll_interval": "Poll interval (seconds)",
+          "poll_interval": "Refresh interval (seconds)",
           "temperature_command": "Temperature command byte",
           "action_commands": "Actions (Label:cmd_hex[:payload_hex], ...)",
-          "diagnostic_commands": "Diagnostic poll commands (hex list)",
-          "enable_temperature_poll": "Enable periodic temperature polling",
-          "connect_on_demand": "Connect BLE only for action/poll",
-          "enable_pairing_probe": "Validate pairing before commands",
+          "diagnostic_commands": "Diagnostic commands (hex list)",
+          "enable_temperature_poll": "Enable periodic polling",
+          "connect_on_demand": "Connect on demand",
+          "enable_pairing_probe": "Validate pairing before send",
           "pairing_timeout": "Pairing validation timeout (seconds)",
-          "device_name_prefix": "BLE name prefix fallback (e.g. KKTO_)",
+          "device_name_prefix": "Fallback BLE name prefix (e.g. KKTO_)",
           "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
           "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
         }

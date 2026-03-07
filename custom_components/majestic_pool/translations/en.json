@@ -3,29 +3,22 @@
     "step": {
       "user": {
         "title": "Majestic Pool",
-        "description": "Quick setup. Select a detected controller, or enter BLE address manually.",
+        "description": "Quick setup: select a detected controller, or use fallback prefix discovery.",
         "data": {
           "name": "Name",
           "discovered_device": "Detected controller (recommended)",
-          "address": "Manual BLE address (fallback)",
+          "address": "Manual BLE address (optional)",
+          "device_name_prefix": "Fallback BLE prefix (e.g. KKTO_)",
           "poll_interval": "Refresh interval (seconds)"
-        },
-        "data_description": {
-          "discovered_device": "Automatically discovered controller (e.g. KKTO_...).",
-          "address": "Bluetooth MAC address of the Majestic controller (format XX:XX:XX:XX:XX:XX).",
-          "poll_interval": "Example: 30 = 30 seconds (not 30 minutes)."
         }
       }
-    },
-    "error": {
-      "address_required": "Select a detected controller or enter a BLE address."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Majestic Pool options",
-        "description": "Advanced BLE protocol settings. Keep defaults unless you are actively reverse engineering.",
+        "description": "Advanced BLE protocol settings.",
         "data": {
           "poll_interval": "Refresh interval (seconds)",
           "temperature_command": "Temperature command byte",
@@ -38,13 +31,6 @@
           "device_name_prefix": "Fallback BLE prefix (e.g. KKTO_)",
           "switch_definitions": "Switches (Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
           "value_sensor_definitions": "Value sensors (Label|cmd|byte_index|scale)"
-        },
-        "data_description": {
-          "temperature_command": "Temperature read command. Keep 2 (0x02) unless you need custom behavior.",
-          "connect_on_demand": "Connect only when an action/read is needed, then disconnect, to reduce physical panel lockups.",
-          "enable_pairing_probe": "Check pairing characteristic before sending commands.",
-          "pairing_timeout": "Maximum wait for valid pairing state.",
-          "device_name_prefix": "BLE name prefix used if configured address fails. Full name is not required."
         }
       }
     }

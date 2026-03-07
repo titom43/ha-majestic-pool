@@ -241,30 +241,31 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selected = str(user_input.get(CONF_DISCOVERED_DEVICE, "")).strip()
             manual = str(user_input.get(CONF_ADDRESS, "")).strip()
             address = discovered_map.get(selected, manual).strip()
-            if not address:
-                errors["base"] = "address_required"
-            else:
-                await self.async_set_unique_id(address.lower())
-                self._abort_if_unique_id_configured()
+            prefix = str(
+                user_input.get(CONF_DEVICE_NAME_PREFIX, DEFAULT_DEVICE_NAME_PREFIX)
+            ).strip() or DEFAULT_DEVICE_NAME_PREFIX
+            unique_id = address.lower() if address else f"auto_{prefix.lower()}"
+            await self.async_set_unique_id(unique_id)
+            self._abort_if_unique_id_configured()
 
-                return self.async_create_entry(
-                    title=user_input[CONF_NAME],
-                    data={
-                        CONF_NAME: user_input[CONF_NAME],
-                        CONF_ADDRESS: address,
-                        CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
-                        CONF_TEMPERATURE_COMMAND: DEFAULT_TEMPERATURE_COMMAND,
-                        CONF_ACTION_COMMANDS: DEFAULT_ACTION_COMMANDS,
-                        CONF_DIAGNOSTIC_COMMANDS: DEFAULT_DIAGNOSTIC_COMMANDS,
-                        CONF_ENABLE_TEMPERATURE_POLL: DEFAULT_ENABLE_TEMPERATURE_POLL,
-                        CONF_CONNECT_ON_DEMAND: DEFAULT_CONNECT_ON_DEMAND,
-                        CONF_ENABLE_PAIRING_PROBE: DEFAULT_ENABLE_PAIRING_PROBE,
-                        CONF_PAIRING_TIMEOUT: DEFAULT_PAIRING_TIMEOUT,
-                        CONF_DEVICE_NAME_PREFIX: DEFAULT_DEVICE_NAME_PREFIX,
-                        CONF_SWITCH_DEFINITIONS: DEFAULT_SWITCH_DEFINITIONS,
-                        CONF_VALUE_SENSOR_DEFINITIONS: DEFAULT_VALUE_SENSOR_DEFINITIONS,
-                    },
-                )
+            return self.async_create_entry(
+                title=user_input[CONF_NAME],
+                data={
+                    CONF_NAME: user_input[CONF_NAME],
+                    CONF_ADDRESS: address,
+                    CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
+                    CONF_TEMPERATURE_COMMAND: DEFAULT_TEMPERATURE_COMMAND,
+                    CONF_ACTION_COMMANDS: DEFAULT_ACTION_COMMANDS,
+                    CONF_DIAGNOSTIC_COMMANDS: DEFAULT_DIAGNOSTIC_COMMANDS,
+                    CONF_ENABLE_TEMPERATURE_POLL: DEFAULT_ENABLE_TEMPERATURE_POLL,
+                    CONF_CONNECT_ON_DEMAND: DEFAULT_CONNECT_ON_DEMAND,
+                    CONF_ENABLE_PAIRING_PROBE: DEFAULT_ENABLE_PAIRING_PROBE,
+                    CONF_PAIRING_TIMEOUT: DEFAULT_PAIRING_TIMEOUT,
+                    CONF_DEVICE_NAME_PREFIX: prefix,
+                    CONF_SWITCH_DEFINITIONS: DEFAULT_SWITCH_DEFINITIONS,
+                    CONF_VALUE_SENSOR_DEFINITIONS: DEFAULT_VALUE_SENSOR_DEFINITIONS,
+                },
+            )
 
         schema_dict: dict = {
             vol.Required(CONF_NAME, default=NAME): str,
@@ -272,6 +273,9 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 int, vol.Range(min=5, max=300)
             ),
             vol.Optional(CONF_ADDRESS): str,
+            vol.Optional(
+                CONF_DEVICE_NAME_PREFIX, default=DEFAULT_DEVICE_NAME_PREFIX
+            ): str,
         }
         if discovered_options:
             schema_dict[vol.Optional(CONF_DISCOVERED_DEVICE)] = vol.In(discovered_options)
