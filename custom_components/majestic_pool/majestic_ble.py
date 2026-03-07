@@ -10,6 +10,10 @@ from dataclasses import dataclass
 from bleak import BleakClient, BleakScanner
 from bleak.backends.device import BLEDevice
 from bleak.backends.characteristic import BleakGATTCharacteristic
+try:
+    from bleak_retry_connector import establish_connection
+except Exception:  # noqa: BLE001
+    establish_connection = None
 
 from .protocol import decode_packet_ascii, encode_packet_ascii, extract_ascii_frames
 
@@ -62,7 +66,8 @@ class MajesticBleHub:
             return
 
         client = await self._async_connect_with_fallback()
-        await client.get_services()
+        if hasattr(client, "get_services"):
+            await client.get_services()
 
         service = client.services.get_service(UUID_SERVICE)
         if service is None:
@@ -90,9 +95,8 @@ class MajesticBleHub:
 
         if self.address:
             tried.add(self.address.lower())
-            client = BleakClient(self.address)
             try:
-                await client.connect()
+                client = await self._async_establish_client(self.address)
                 return client
             except Exception as err:  # noqa: BLE001
                 last_error = err
@@ -100,9 +104,8 @@ class MajesticBleHub:
 
         fallback = await self._async_discover_by_prefix(exclude=tried)
         if fallback is not None:
-            client = BleakClient(fallback)
             try:
-                await client.connect()
+                client = await self._async_establish_client(fallback)
                 return client
             except Exception as err:  # noqa: BLE001
                 last_error = err
@@ -111,6 +114,18 @@ class MajesticBleHub:
         if last_error is not None:
             raise RuntimeError("Impossible de se connecter au boitier BLE Majestic") from last_error
         raise RuntimeError("Boitier BLE Majestic introuvable")
+
+    async def _async_establish_client(self, address: str) -> BleakClient:
+        """Create/connect a Bleak client, preferring bleak-retry-connector in HA."""
+        if establish_connection is not None:
+            try:
+                return await establish_connection(BleakClient, address, address)
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.debug("bleak-retry-connector failed for %s: %s", address, err)
+
+        client = BleakClient(address)
+        await client.connect()
+        return client
 
     async def _async_discover_by_prefix(self, *, exclude: set[str]) -> str | None:
         """Find Majestic device by advertised name prefix (e.g. KKTO_)."""

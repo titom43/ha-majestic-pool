@@ -315,7 +315,7 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
     """Majestic Pool options flow."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
+        self._config_entry = config_entry
 
     async def async_step_init(self, user_input: dict | None = None):
         if user_input is not None:
@@ -346,7 +346,7 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                 },
             )
 
-        cfg = {**self.config_entry.data, **self.config_entry.options}
+        cfg = {**self._config_entry.data, **self._config_entry.options}
         schema = vol.Schema(
             {
                 vol.Required(
