@@ -290,10 +290,19 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(schema_dict)
 
+        if discovered_options:
+            ble_hint = f"{len(discovered_options)} boitier(s) BLE detecte(s)."
+        else:
+            ble_hint = (
+                "Aucun boitier BLE detecte pour le moment. "
+                "Vous pouvez continuer avec le prefixe KKTO_ ou une adresse manuelle."
+            )
+
         return self.async_show_form(
             step_id="user",
             data_schema=schema,
             errors=errors,
+            description_placeholders={"ble_hint": ble_hint},
         )
 
     @staticmethod

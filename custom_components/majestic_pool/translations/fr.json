@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Majestic Pool",
-        "description": "Configuration rapide: sélectionnez un boîtier détecté, ou utilisez la découverte par préfixe.",
+        "description": "Configuration rapide: sélectionnez un boîtier détecté, ou utilisez la découverte par préfixe. {ble_hint}",
         "data": {
           "name": "Nom",
           "discovered_device": "Boîtier détecté (recommandé)",
