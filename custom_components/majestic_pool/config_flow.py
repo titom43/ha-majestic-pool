@@ -36,6 +36,7 @@ from .const import (
     DOMAIN,
     NAME,
 )
+from .majestic_ble import MajesticBleHub
 
 MAJESTIC_SERVICE_UUID = "569a1101-b87f-490c-92cb-11ba5ea5167c"
 CONF_DISCOVERED_DEVICE = "discovered_device"
@@ -245,36 +246,6 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         except Exception as err:  # noqa: BLE001
             _LOGGER.debug("Bluetooth discovery unavailable in config flow: %s", err)
 
-        if user_input is not None:
-            selected = str(user_input.get(CONF_DISCOVERED_DEVICE, "")).strip()
-            manual = str(user_input.get(CONF_ADDRESS, "")).strip()
-            address = discovered_map.get(selected, manual).strip()
-            prefix = str(
-                user_input.get(CONF_DEVICE_NAME_PREFIX, DEFAULT_DEVICE_NAME_PREFIX)
-            ).strip() or DEFAULT_DEVICE_NAME_PREFIX
-            unique_id = address.lower() if address else f"auto_{prefix.lower()}"
-            await self.async_set_unique_id(unique_id)
-            self._abort_if_unique_id_configured()
-
-            return self.async_create_entry(
-                title=user_input[CONF_NAME],
-                data={
-                    CONF_NAME: user_input[CONF_NAME],
-                    CONF_ADDRESS: address,
-                    CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
-                    CONF_TEMPERATURE_COMMAND: DEFAULT_TEMPERATURE_COMMAND,
-                    CONF_ACTION_COMMANDS: DEFAULT_ACTION_COMMANDS,
-                    CONF_DIAGNOSTIC_COMMANDS: DEFAULT_DIAGNOSTIC_COMMANDS,
-                    CONF_ENABLE_TEMPERATURE_POLL: DEFAULT_ENABLE_TEMPERATURE_POLL,
-                    CONF_CONNECT_ON_DEMAND: DEFAULT_CONNECT_ON_DEMAND,
-                    CONF_ENABLE_PAIRING_PROBE: DEFAULT_ENABLE_PAIRING_PROBE,
-                    CONF_PAIRING_TIMEOUT: DEFAULT_PAIRING_TIMEOUT,
-                    CONF_DEVICE_NAME_PREFIX: prefix,
-                    CONF_SWITCH_DEFINITIONS: DEFAULT_SWITCH_DEFINITIONS,
-                    CONF_VALUE_SENSOR_DEFINITIONS: DEFAULT_VALUE_SENSOR_DEFINITIONS,
-                },
-            )
-
         schema_dict: dict = {
             vol.Required(CONF_NAME, default=NAME): str,
             vol.Required(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): vol.All(
@@ -296,6 +267,59 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ble_hint = (
                 "Aucun boitier BLE detecte pour le moment. "
                 "Vous pouvez continuer avec le prefixe KKTO_ ou une adresse manuelle."
+            )
+
+        if user_input is not None:
+            selected = str(user_input.get(CONF_DISCOVERED_DEVICE, "")).strip()
+            manual = str(user_input.get(CONF_ADDRESS, "")).strip()
+            address = discovered_map.get(selected, manual).strip()
+            prefix = str(
+                user_input.get(CONF_DEVICE_NAME_PREFIX, DEFAULT_DEVICE_NAME_PREFIX)
+            ).strip() or DEFAULT_DEVICE_NAME_PREFIX
+            unique_id = address.lower() if address else f"auto_{prefix.lower()}"
+            await self.async_set_unique_id(unique_id)
+            self._abort_if_unique_id_configured()
+
+            # Validate BLE access + pairing before creating the entry.
+            hub = MajesticBleHub(
+                address,
+                enable_pairing_probe=DEFAULT_ENABLE_PAIRING_PROBE,
+                pairing_timeout=DEFAULT_PAIRING_TIMEOUT,
+                device_name_prefix=prefix,
+            )
+            try:
+                await hub.async_connect()
+                await hub.async_disconnect()
+            except Exception as err:  # noqa: BLE001
+                msg = str(err).lower()
+                if "appairage" in msg or "pairing" in msg:
+                    errors["base"] = "pairing_required"
+                else:
+                    errors["base"] = "cannot_connect"
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=schema,
+                    errors=errors,
+                    description_placeholders={"ble_hint": ble_hint},
+                )
+
+            return self.async_create_entry(
+                title=user_input[CONF_NAME],
+                data={
+                    CONF_NAME: user_input[CONF_NAME],
+                    CONF_ADDRESS: address,
+                    CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
+                    CONF_TEMPERATURE_COMMAND: DEFAULT_TEMPERATURE_COMMAND,
+                    CONF_ACTION_COMMANDS: DEFAULT_ACTION_COMMANDS,
+                    CONF_DIAGNOSTIC_COMMANDS: DEFAULT_DIAGNOSTIC_COMMANDS,
+                    CONF_ENABLE_TEMPERATURE_POLL: DEFAULT_ENABLE_TEMPERATURE_POLL,
+                    CONF_CONNECT_ON_DEMAND: DEFAULT_CONNECT_ON_DEMAND,
+                    CONF_ENABLE_PAIRING_PROBE: DEFAULT_ENABLE_PAIRING_PROBE,
+                    CONF_PAIRING_TIMEOUT: DEFAULT_PAIRING_TIMEOUT,
+                    CONF_DEVICE_NAME_PREFIX: prefix,
+                    CONF_SWITCH_DEFINITIONS: DEFAULT_SWITCH_DEFINITIONS,
+                    CONF_VALUE_SENSOR_DEFINITIONS: DEFAULT_VALUE_SENSOR_DEFINITIONS,
+                },
             )
 
         return self.async_show_form(

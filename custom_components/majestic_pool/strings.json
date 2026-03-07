@@ -1,5 +1,9 @@
 {
   "config": {
+    "error": {
+      "pairing_required": "Controller not paired. Put it in pairing mode and try again.",
+      "cannot_connect": "Unable to connect to controller. Check BLE range and try again."
+    },
     "step": {
       "user": {
         "title": "Majestic Pool",

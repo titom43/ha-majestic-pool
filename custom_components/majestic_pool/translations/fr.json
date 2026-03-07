@@ -1,5 +1,9 @@
 {
   "config": {
+    "error": {
+      "pairing_required": "Boîtier non appairé. Mettez-le en mode appairage puis réessayez.",
+      "cannot_connect": "Connexion au boîtier impossible. Vérifiez la portée BLE et réessayez."
+    },
     "step": {
       "user": {
         "title": "Majestic Pool",
