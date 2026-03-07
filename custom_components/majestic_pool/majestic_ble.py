@@ -43,11 +43,13 @@ class MajesticBleHub:
         enable_pairing_probe: bool = True,
         pairing_timeout: float = 45.0,
         device_name_prefix: str = "KKTO_",
+        debug_ble: bool = False,
     ) -> None:
         self.address = address
         self._enable_pairing_probe = enable_pairing_probe
         self._pairing_timeout = pairing_timeout
         self._device_name_prefix = device_name_prefix.strip()
+        self._debug_ble = debug_ble
         self._client: BleakClient | None = None
         self._tx_char: BleakGATTCharacteristic | None = None
         self._rx_char: BleakGATTCharacteristic | None = None
@@ -56,15 +58,28 @@ class MajesticBleHub:
         self._lock = asyncio.Lock()
         self.state = MajesticState()
 
+    def _dbg(self, msg: str, *args) -> None:
+        """Emit debug traces even when global logger isn't in DEBUG."""
+        if self._debug_ble:
+            _LOGGER.warning("[Majestic BLE Debug] " + msg, *args)
+        else:
+            _LOGGER.debug(msg, *args)
+
     @property
     def is_connected(self) -> bool:
         return self._client is not None and self._client.is_connected
 
-    async def async_connect(self) -> None:
+    async def async_connect(self, *, require_pairing_ready: bool = False) -> None:
         """Connect and subscribe to notifications."""
         if self.is_connected:
             return
 
+        self._dbg(
+            "connect start address=%s require_pairing_ready=%s prefix=%s",
+            self.address,
+            require_pairing_ready,
+            self._device_name_prefix,
+        )
         client = await self._async_connect_with_fallback()
         if hasattr(client, "get_services"):
             await client.get_services()
@@ -80,13 +95,14 @@ class MajesticBleHub:
             await client.disconnect()
             raise RuntimeError("Majestic TX/RX characteristics not found")
         pairing_char = service.get_characteristic(UUID_PAIRING)
-        if self._enable_pairing_probe and pairing_char is not None:
+        if (require_pairing_ready or self._enable_pairing_probe) and pairing_char is not None:
             await self._async_wait_pairing_ready(client, pairing_char)
 
         self._client = client
         self._tx_char = tx_char
         self._rx_char = rx_char
         await client.start_notify(rx_char, self._handle_notification)
+        self._dbg("connect success address=%s", getattr(client, "address", self.address))
 
     async def _async_connect_with_fallback(self) -> BleakClient:
         """Connect using configured address, then fallback to name-prefix discovery."""
@@ -100,7 +116,7 @@ class MajesticBleHub:
                 return client
             except Exception as err:  # noqa: BLE001
                 last_error = err
-                _LOGGER.debug("Direct BLE connect failed for %s: %s", self.address, err)
+                self._dbg("direct connect failed for %s: %s", self.address, err)
 
         fallback = await self._async_discover_by_prefix(exclude=tried)
         if fallback is not None:
@@ -109,7 +125,7 @@ class MajesticBleHub:
                 return client
             except Exception as err:  # noqa: BLE001
                 last_error = err
-                _LOGGER.debug("Fallback BLE connect failed for %s: %s", fallback, err)
+                self._dbg("fallback connect failed for %s: %s", fallback, err)
 
         if last_error is not None:
             raise RuntimeError("Impossible de se connecter au boitier BLE Majestic") from last_error
@@ -129,8 +145,13 @@ class MajesticBleHub:
                     address,
                     err,
                 )
+            self._dbg("establish_connection via bleak-retry-connector for %s", address)
             return await establish_connection(BleakClient, device, address)
 
+        _LOGGER.warning(
+            "bleak-retry-connector indisponible, fallback direct BleakClient.connect pour %s",
+            address,
+        )
         client = BleakClient(address)
         await client.connect()
         return client
@@ -141,6 +162,7 @@ class MajesticBleHub:
             return None
 
         devices = await BleakScanner.discover(timeout=3.0)
+        self._dbg("discovery complete, %d device(s) seen", len(devices))
         for dev in devices:
             if not isinstance(dev, BLEDevice):
                 continue
@@ -149,7 +171,12 @@ class MajesticBleHub:
                 continue
             name = dev.name or str(dev.metadata.get("local_name", ""))
             if name.startswith(self._device_name_prefix):
-                _LOGGER.debug("Majestic device discovered by prefix %s: %s (%s)", self._device_name_prefix, name, dev.address)
+                self._dbg(
+                    "discovered by prefix %s: %s (%s)",
+                    self._device_name_prefix,
+                    name,
+                    dev.address,
+                )
                 return dev.address
         return None
 
@@ -163,13 +190,14 @@ class MajesticBleHub:
         while asyncio.get_running_loop().time() < deadline:
             try:
                 value = bytes(await client.read_gatt_char(pairing_char))
+                self._dbg("pairing probe read=%s", value.hex())
                 if PAIRING_SENTINEL in value:
-                    _LOGGER.debug("Majestic pairing probe successful: %s", value.hex())
+                    self._dbg("pairing probe success")
                     return
             except Exception as err:  # noqa: BLE001
                 # Common transient during non-paired state (e.g. Android GATT 133).
                 last_error = err
-                _LOGGER.debug("Pairing probe not ready yet: %s", err)
+                self._dbg("pairing probe transient error: %s", err)
             await asyncio.sleep(1.0)
 
         if last_error is not None:
@@ -194,6 +222,7 @@ class MajesticBleHub:
         try:
             await self._client.disconnect()
         finally:
+            self._dbg("disconnect complete")
             self._client = None
             self._tx_char = None
             self._rx_char = None
@@ -215,6 +244,7 @@ class MajesticBleHub:
             packet = decode_packet_ascii(frame)
             if packet is None:
                 continue
+            self._dbg("rx frame cmd=%02x payload=%s", packet.cmd, packet.payload.hex())
             self._rx_queue.put_nowait((packet.cmd, packet.payload))
 
     async def async_send_command(
@@ -236,7 +266,7 @@ class MajesticBleHub:
                     self._rx_queue.get_nowait()
 
                 encoded = encode_packet_ascii(cmd, payload)
-                _LOGGER.debug("Sending cmd=%s payload=%s raw=%s", cmd, payload.hex(), encoded)
+                self._dbg("tx cmd=%02x payload=%s raw=%s", cmd, payload.hex(), encoded)
                 await self._client.write_gatt_char(self._tx_char, encoded, response=True)
 
                 if not expect_response:
@@ -262,6 +292,7 @@ class MajesticBleHub:
 
             item = await asyncio.wait_for(self._rx_queue.get(), timeout=remaining)
             if predicate(item):
+                self._dbg("matched response cmd=%02x payload=%s", item[0], item[1].hex())
                 return item[1]
 
     async def async_get_temperature(self, cmd: int) -> float | None:

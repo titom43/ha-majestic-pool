@@ -17,10 +17,14 @@ from .const import (
     ATTR_ENTRY_ID,
     ATTR_PAYLOAD,
     CONF_CONNECT_ON_DEMAND,
+    CONF_DEBUG_BLE,
     CONF_DEVICE_NAME_PREFIX,
     CONF_ENABLE_PAIRING_PROBE,
     CONF_ENABLE_TEMPERATURE_POLL,
     CONF_PAIRING_TIMEOUT,
+    DEFAULT_ENABLE_PAIRING_PROBE,
+    DEFAULT_DEBUG_BLE,
+    DEFAULT_PAIRING_TIMEOUT,
     DOMAIN,
     PLATFORMS,
     SERVICE_REFRESH,
@@ -67,9 +71,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     config = {**entry.data, **entry.options}
     hub = MajesticBleHub(
         config[CONF_ADDRESS],
-        enable_pairing_probe=bool(config.get(CONF_ENABLE_PAIRING_PROBE, True)),
-        pairing_timeout=float(config.get(CONF_PAIRING_TIMEOUT, 45)),
+        enable_pairing_probe=bool(
+            config.get(CONF_ENABLE_PAIRING_PROBE, DEFAULT_ENABLE_PAIRING_PROBE)
+        ),
+        pairing_timeout=float(config.get(CONF_PAIRING_TIMEOUT, DEFAULT_PAIRING_TIMEOUT)),
         device_name_prefix=str(config.get(CONF_DEVICE_NAME_PREFIX, "KKTO_")),
+        debug_ble=bool(config.get(CONF_DEBUG_BLE, DEFAULT_DEBUG_BLE)),
     )
     coordinator = MajesticCoordinator(hass, hub, config)
 

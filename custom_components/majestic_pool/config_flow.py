@@ -14,6 +14,7 @@ import logging
 from .const import (
     CONF_ACTION_COMMANDS,
     CONF_CONNECT_ON_DEMAND,
+    CONF_DEBUG_BLE,
     CONF_DEVICE_NAME_PREFIX,
     CONF_ENABLE_PAIRING_PROBE,
     CONF_DIAGNOSTIC_COMMANDS,
@@ -25,6 +26,7 @@ from .const import (
     CONF_VALUE_SENSOR_DEFINITIONS,
     DEFAULT_ACTION_COMMANDS,
     DEFAULT_CONNECT_ON_DEMAND,
+    DEFAULT_DEBUG_BLE,
     DEFAULT_DEVICE_NAME_PREFIX,
     DEFAULT_ENABLE_PAIRING_PROBE,
     DEFAULT_DIAGNOSTIC_COMMANDS,
@@ -291,7 +293,7 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             last_err: Exception | None = None
             for _attempt in range(1):
                 try:
-                    await hub.async_connect()
+                    await hub.async_connect(require_pairing_ready=True)
                     await hub.async_disconnect()
                     last_err = None
                     break
@@ -305,7 +307,8 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 if "appairage" in msg or "pairing" in msg:
                     error_text = (
                         "Echec appairage: activez le mode appairage sur le boitier, "
-                        "selectionnez le boitier detecte, puis validez rapidement."
+                        "selectionnez le boitier detecte, puis validez dans les 30 secondes. "
+                        "Fermez aussi l'app mobile Majestic."
                     )
                 else:
                     error_text = (
@@ -336,6 +339,7 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_ENABLE_PAIRING_PROBE: DEFAULT_ENABLE_PAIRING_PROBE,
                     CONF_PAIRING_TIMEOUT: DEFAULT_PAIRING_TIMEOUT,
                     CONF_DEVICE_NAME_PREFIX: prefix,
+                    CONF_DEBUG_BLE: DEFAULT_DEBUG_BLE,
                     CONF_SWITCH_DEFINITIONS: DEFAULT_SWITCH_DEFINITIONS,
                     CONF_VALUE_SENSOR_DEFINITIONS: DEFAULT_VALUE_SENSOR_DEFINITIONS,
                 },
@@ -380,6 +384,7 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                         int(user_input[CONF_PAIRING_TIMEOUT]), 5, 180
                     ),
                     CONF_DEVICE_NAME_PREFIX: user_input[CONF_DEVICE_NAME_PREFIX].strip(),
+                    CONF_DEBUG_BLE: user_input[CONF_DEBUG_BLE],
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
                     ),
@@ -437,6 +442,10 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_DEVICE_NAME_PREFIX,
                     default=cfg.get(CONF_DEVICE_NAME_PREFIX, DEFAULT_DEVICE_NAME_PREFIX),
                 ): str,
+                vol.Required(
+                    CONF_DEBUG_BLE,
+                    default=cfg.get(CONF_DEBUG_BLE, DEFAULT_DEBUG_BLE),
+                ): bool,
                 vol.Optional(
                     CONF_SWITCH_DEFINITIONS,
                     default=_switches_to_text(

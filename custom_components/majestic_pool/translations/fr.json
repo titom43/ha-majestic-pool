@@ -30,6 +30,7 @@
           "diagnostic_commands": "Commandes diagnostics (liste hex)",
           "enable_temperature_poll": "Activer le polling périodique",
           "connect_on_demand": "Connexion BLE à la demande",
+          "debug_ble": "Activer les logs debug BLE (diagnostic)",
           "enable_pairing_probe": "Vérifier l'appairage avant envoi",
           "pairing_timeout": "Timeout de vérification appairage (secondes)",
           "device_name_prefix": "Préfixe BLE de secours (ex: KKTO_)",
