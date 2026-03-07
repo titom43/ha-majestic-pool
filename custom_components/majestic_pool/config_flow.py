@@ -11,6 +11,7 @@ from homeassistant.core import callback
 from .const import (
     CONF_ACTION_COMMANDS,
     CONF_CONNECT_ON_DEMAND,
+    CONF_DEVICE_NAME_PREFIX,
     CONF_ENABLE_PAIRING_PROBE,
     CONF_DIAGNOSTIC_COMMANDS,
     CONF_ENABLE_TEMPERATURE_POLL,
@@ -21,6 +22,7 @@ from .const import (
     CONF_VALUE_SENSOR_DEFINITIONS,
     DEFAULT_ACTION_COMMANDS,
     DEFAULT_CONNECT_ON_DEMAND,
+    DEFAULT_DEVICE_NAME_PREFIX,
     DEFAULT_ENABLE_PAIRING_PROBE,
     DEFAULT_DIAGNOSTIC_COMMANDS,
     DEFAULT_ENABLE_TEMPERATURE_POLL,
@@ -230,6 +232,7 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
                     CONF_ENABLE_PAIRING_PROBE: user_input[CONF_ENABLE_PAIRING_PROBE],
                     CONF_PAIRING_TIMEOUT: user_input[CONF_PAIRING_TIMEOUT],
+                    CONF_DEVICE_NAME_PREFIX: user_input[CONF_DEVICE_NAME_PREFIX].strip(),
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
                     ),
@@ -274,6 +277,10 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_PAIRING_TIMEOUT,
                     default=DEFAULT_PAIRING_TIMEOUT,
                 ): vol.All(int, vol.Range(min=5, max=180)),
+                vol.Required(
+                    CONF_DEVICE_NAME_PREFIX,
+                    default=DEFAULT_DEVICE_NAME_PREFIX,
+                ): str,
                 vol.Optional(
                     CONF_SWITCH_DEFINITIONS,
                     default=_switches_to_text(DEFAULT_SWITCH_DEFINITIONS),
@@ -318,6 +325,7 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
                     CONF_ENABLE_PAIRING_PROBE: user_input[CONF_ENABLE_PAIRING_PROBE],
                     CONF_PAIRING_TIMEOUT: user_input[CONF_PAIRING_TIMEOUT],
+                    CONF_DEVICE_NAME_PREFIX: user_input[CONF_DEVICE_NAME_PREFIX].strip(),
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
                     ),
@@ -371,6 +379,10 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_PAIRING_TIMEOUT,
                     default=cfg.get(CONF_PAIRING_TIMEOUT, DEFAULT_PAIRING_TIMEOUT),
                 ): vol.All(int, vol.Range(min=5, max=180)),
+                vol.Required(
+                    CONF_DEVICE_NAME_PREFIX,
+                    default=cfg.get(CONF_DEVICE_NAME_PREFIX, DEFAULT_DEVICE_NAME_PREFIX),
+                ): str,
                 vol.Optional(
                     CONF_SWITCH_DEFINITIONS,
                     default=_switches_to_text(

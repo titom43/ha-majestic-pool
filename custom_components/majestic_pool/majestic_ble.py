@@ -7,7 +7,8 @@ import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from bleak import BleakClient
+from bleak import BleakClient, BleakScanner
+from bleak.backends.device import BLEDevice
 from bleak.backends.characteristic import BleakGATTCharacteristic
 
 from .protocol import decode_packet_ascii, encode_packet_ascii, extract_ascii_frames
@@ -37,10 +38,12 @@ class MajesticBleHub:
         *,
         enable_pairing_probe: bool = True,
         pairing_timeout: float = 45.0,
+        device_name_prefix: str = "KKTO_",
     ) -> None:
         self.address = address
         self._enable_pairing_probe = enable_pairing_probe
         self._pairing_timeout = pairing_timeout
+        self._device_name_prefix = device_name_prefix.strip()
         self._client: BleakClient | None = None
         self._tx_char: BleakGATTCharacteristic | None = None
         self._rx_char: BleakGATTCharacteristic | None = None
@@ -58,8 +61,7 @@ class MajesticBleHub:
         if self.is_connected:
             return
 
-        client = BleakClient(self.address)
-        await client.connect()
+        client = await self._async_connect_with_fallback()
         await client.get_services()
 
         service = client.services.get_service(UUID_SERVICE)
@@ -80,6 +82,53 @@ class MajesticBleHub:
         self._tx_char = tx_char
         self._rx_char = rx_char
         await client.start_notify(rx_char, self._handle_notification)
+
+    async def _async_connect_with_fallback(self) -> BleakClient:
+        """Connect using configured address, then fallback to name-prefix discovery."""
+        tried: set[str] = set()
+        last_error: Exception | None = None
+
+        if self.address:
+            tried.add(self.address.lower())
+            client = BleakClient(self.address)
+            try:
+                await client.connect()
+                return client
+            except Exception as err:  # noqa: BLE001
+                last_error = err
+                _LOGGER.debug("Direct BLE connect failed for %s: %s", self.address, err)
+
+        fallback = await self._async_discover_by_prefix(exclude=tried)
+        if fallback is not None:
+            client = BleakClient(fallback)
+            try:
+                await client.connect()
+                return client
+            except Exception as err:  # noqa: BLE001
+                last_error = err
+                _LOGGER.debug("Fallback BLE connect failed for %s: %s", fallback, err)
+
+        if last_error is not None:
+            raise RuntimeError("Impossible de se connecter au boitier BLE Majestic") from last_error
+        raise RuntimeError("Boitier BLE Majestic introuvable")
+
+    async def _async_discover_by_prefix(self, *, exclude: set[str]) -> str | None:
+        """Find Majestic device by advertised name prefix (e.g. KKTO_)."""
+        if not self._device_name_prefix:
+            return None
+
+        devices = await BleakScanner.discover(timeout=8.0)
+        for dev in devices:
+            if not isinstance(dev, BLEDevice):
+                continue
+            addr = (dev.address or "").lower()
+            if not addr or addr in exclude:
+                continue
+            name = dev.name or str(dev.metadata.get("local_name", ""))
+            if name.startswith(self._device_name_prefix):
+                _LOGGER.debug("Majestic device discovered by prefix %s: %s (%s)", self._device_name_prefix, name, dev.address)
+                return dev.address
+        return None
 
     async def _async_wait_pairing_ready(
         self, client: BleakClient, pairing_char: BleakGATTCharacteristic

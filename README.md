@@ -42,6 +42,11 @@ Intégration Home Assistant (Custom Component) pour piloter un coffret **Majesti
 - `connect_on_demand`: se connecte uniquement pour action/poll puis se déconnecte
 - `enable_pairing_probe`: vérifie l'état d'appairage BLE avant d'envoyer les commandes
 - `pairing_timeout`: délai max (en secondes) pour valider l'appairage (`pairingTest`)
+- `device_name_prefix`: préfixe de nom BLE utilisé en fallback de découverte (défaut `KKTO_`)
+
+Comportement de connexion:
+- tentative de connexion d'abord sur `address`
+- si échec, scan BLE et fallback sur le premier périphérique dont le nom commence par `device_name_prefix`
 
 ### Actions brutes
 

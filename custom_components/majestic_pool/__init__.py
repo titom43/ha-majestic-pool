@@ -17,6 +17,7 @@ from .const import (
     ATTR_PAYLOAD,
     CONF_ADDRESS,
     CONF_CONNECT_ON_DEMAND,
+    CONF_DEVICE_NAME_PREFIX,
     CONF_ENABLE_PAIRING_PROBE,
     CONF_ENABLE_TEMPERATURE_POLL,
     CONF_PAIRING_TIMEOUT,
@@ -68,6 +69,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         config[CONF_ADDRESS],
         enable_pairing_probe=bool(config.get(CONF_ENABLE_PAIRING_PROBE, True)),
         pairing_timeout=float(config.get(CONF_PAIRING_TIMEOUT, 45)),
+        device_name_prefix=str(config.get(CONF_DEVICE_NAME_PREFIX, "KKTO_")),
     )
     coordinator = MajesticCoordinator(hass, hub, config)
 
