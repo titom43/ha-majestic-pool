@@ -8,6 +8,7 @@ from homeassistant.components import bluetooth
 from homeassistant import config_entries
 from homeassistant.const import CONF_ADDRESS, CONF_NAME
 from homeassistant.core import callback
+import logging
 
 from .const import (
     CONF_ACTION_COMMANDS,
@@ -38,6 +39,7 @@ from .const import (
 
 MAJESTIC_SERVICE_UUID = "569a1101-b87f-490c-92cb-11ba5ea5167c"
 CONF_DISCOVERED_DEVICE = "discovered_device"
+_LOGGER = logging.getLogger(__name__)
 
 
 def _clamp(value: int, minimum: int, maximum: int) -> int:
@@ -228,14 +230,20 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         discovered_options: list[str] = []
         discovered_map: dict[str, str] = {}
 
-        for info in bluetooth.async_discovered_service_info(self.hass):
-            uuids = [u.lower() for u in (info.service_uuids or [])]
-            name = getattr(info, "name", None) or getattr(info, "local_name", None)
-            if MAJESTIC_SERVICE_UUID in uuids or (name and name.startswith("KKTO_")):
-                label = f"{_friendly_name(name)} ({info.address})"
-                if info.address.lower() not in {a.lower() for a in discovered_map.values()}:
-                    discovered_options.append(label)
-                    discovered_map[label] = info.address
+        try:
+            for info in bluetooth.async_discovered_service_info(self.hass):
+                uuids = [u.lower() for u in (getattr(info, "service_uuids", None) or [])]
+                name = getattr(info, "name", None) or getattr(info, "local_name", None)
+                address = getattr(info, "address", None)
+                if not address:
+                    continue
+                if MAJESTIC_SERVICE_UUID in uuids or (name and name.startswith("KKTO_")):
+                    label = f"{_friendly_name(name)} ({address})"
+                    if address.lower() not in {a.lower() for a in discovered_map.values()}:
+                        discovered_options.append(label)
+                        discovered_map[label] = address
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.debug("Bluetooth discovery unavailable in config flow: %s", err)
 
         if user_input is not None:
             selected = str(user_input.get(CONF_DISCOVERED_DEVICE, "")).strip()
