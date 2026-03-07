@@ -37,7 +37,7 @@ Intégration Home Assistant (Custom Component) pour piloter un coffret **Majesti
 
 - `address`: adresse MAC BLE du boîtier
 - `poll_interval`: fréquence de polling (secondes)
-- `temperature_command`: commande de lecture température (défaut `0x02`)
+- `temperature_command`: commande de lecture température (défaut `0x22`)
 - `enable_temperature_poll`: active/désactive le polling périodique
 - `connect_on_demand`: se connecte uniquement pour action/poll puis se déconnecte
 
@@ -47,11 +47,11 @@ Champ `action_commands`:
 
 `Label:cmd_hex[:payload_hex],Label2:7a`
 
-Exemples:
-- `Light Toggle:33`
-- `Pump Boost:41`
-- `Freeze On:50:01`
-- `Freeze Off:50:00`
+Exemples (préremplis par défaut):
+- `Projecteur toggle:23`
+- `Pompe manuel:35`
+- `Pompe auto:36`
+- `Pompe boost:37`
 
 ### Switches configurables
 
@@ -59,9 +59,9 @@ Champ `switch_definitions`:
 
 `Label|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value`
 
-Exemples:
-- `Pompe|33|01|33|00|03|01`
-- `Projecteur LED|34|01|34|00|04|01`
+Exemples (préremplis par défaut):
+- `Projecteur|23||23|||`
+- `Pompe Auto|36||35|||`
 
 Notes:
 - `state_cmd` et `on_value` sont optionnels.
@@ -73,15 +73,15 @@ Champ `value_sensor_definitions`:
 
 `Label|cmd|byte_index|scale`
 
-Exemples:
-- `Temp brute cmd02|02|2|1`
-- `Courant pompe|64|3|0.1`
+Exemples (préremplis par défaut):
+- `Courant pompe|27|0|0.1`
+- `Courant booster|27|1|0.1`
 
 ### Commandes diagnostics
 
 Champ `diagnostic_commands` (liste hex):
 
-`03,04,64,6e`
+`2d,27,03,04,64,6e`
 
 ## Services Home Assistant
 
@@ -103,10 +103,20 @@ Champ `diagnostic_commands` (liste hex):
 - Pairing characteristic (à intégrer complètement): `569a2004-b87f-490c-92cb-11ba5ea5167c`
 - CRC: `((sum(bytes) & 0xFF) ^ 0xFF) + 1`
 
+## Mapping commandes (actuel)
+
+- `0x23`: toggle projecteur
+- `0x35`: pompe manuel
+- `0x36`: pompe auto
+- `0x37`: pompe boost
+- `0x2d`: lecture statut pompe
+- `0x27`: lecture courants pompe/booster
+- `0x22`: lecture température
+
 ## Limites actuelles
 
 - Le workflow d'appairage avancé (manip physique + séquence BLE spécifique) n'est pas encore entièrement automatisé côté intégration.
-- Certains mappings `commande -> signification métier` restent en cours de consolidation.
+- L'échelle exacte des courants (`A`, `0.1A`, etc.) reste à confirmer définitivement selon captures terrain.
 
 ## Support / Contribution
 

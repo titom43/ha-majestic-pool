@@ -13,6 +13,8 @@ from .const import CONF_VALUE_SENSOR_DEFINITIONS, DOMAIN
 from .coordinator import MajesticCoordinator
 
 KNOWN_DIAGNOSTIC_COMMANDS: dict[int, str] = {
+    0x2D: "Pump Status Raw",
+    0x27: "Pump/Booster Currents Raw",
     0x03: "Program Mode And Shutter Raw",
     0x04: "Light Parameters Raw",
     0x64: "RF Status Raw",

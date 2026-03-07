@@ -10,18 +10,21 @@ from homeassistant.core import callback
 
 from .const import (
     CONF_ACTION_COMMANDS,
-    CONF_DIAGNOSTIC_COMMANDS,
     CONF_CONNECT_ON_DEMAND,
+    CONF_DIAGNOSTIC_COMMANDS,
     CONF_ENABLE_TEMPERATURE_POLL,
     CONF_POLL_INTERVAL,
     CONF_SWITCH_DEFINITIONS,
     CONF_TEMPERATURE_COMMAND,
     CONF_VALUE_SENSOR_DEFINITIONS,
-    DEFAULT_DIAGNOSTIC_COMMANDS,
+    DEFAULT_ACTION_COMMANDS,
     DEFAULT_CONNECT_ON_DEMAND,
+    DEFAULT_DIAGNOSTIC_COMMANDS,
     DEFAULT_ENABLE_TEMPERATURE_POLL,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_SWITCH_DEFINITIONS,
     DEFAULT_TEMPERATURE_COMMAND,
+    DEFAULT_VALUE_SENSOR_DEFINITIONS,
     DOMAIN,
     NAME,
 )
@@ -219,9 +222,7 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_DIAGNOSTIC_COMMANDS: _parse_cmd_list(
                         user_input[CONF_DIAGNOSTIC_COMMANDS]
                     ),
-                    CONF_ENABLE_TEMPERATURE_POLL: user_input[
-                        CONF_ENABLE_TEMPERATURE_POLL
-                    ],
+                    CONF_ENABLE_TEMPERATURE_POLL: user_input[CONF_ENABLE_TEMPERATURE_POLL],
                     CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
@@ -240,9 +241,13 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     int, vol.Range(min=5, max=300)
                 ),
                 vol.Required(
-                    CONF_TEMPERATURE_COMMAND, default=DEFAULT_TEMPERATURE_COMMAND
+                    CONF_TEMPERATURE_COMMAND,
+                    default=DEFAULT_TEMPERATURE_COMMAND,
                 ): vol.All(int, vol.Range(min=0, max=255)),
-                vol.Optional(CONF_ACTION_COMMANDS, default=""): str,
+                vol.Optional(
+                    CONF_ACTION_COMMANDS,
+                    default=_actions_to_text(DEFAULT_ACTION_COMMANDS),
+                ): str,
                 vol.Optional(
                     CONF_DIAGNOSTIC_COMMANDS,
                     default=_cmd_list_to_text(DEFAULT_DIAGNOSTIC_COMMANDS),
@@ -255,8 +260,14 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_CONNECT_ON_DEMAND,
                     default=DEFAULT_CONNECT_ON_DEMAND,
                 ): bool,
-                vol.Optional(CONF_SWITCH_DEFINITIONS, default=""): str,
-                vol.Optional(CONF_VALUE_SENSOR_DEFINITIONS, default=""): str,
+                vol.Optional(
+                    CONF_SWITCH_DEFINITIONS,
+                    default=_switches_to_text(DEFAULT_SWITCH_DEFINITIONS),
+                ): str,
+                vol.Optional(
+                    CONF_VALUE_SENSOR_DEFINITIONS,
+                    default=_value_sensors_to_text(DEFAULT_VALUE_SENSOR_DEFINITIONS),
+                ): str,
             }
         )
 
@@ -289,9 +300,7 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_DIAGNOSTIC_COMMANDS: _parse_cmd_list(
                         user_input[CONF_DIAGNOSTIC_COMMANDS]
                     ),
-                    CONF_ENABLE_TEMPERATURE_POLL: user_input[
-                        CONF_ENABLE_TEMPERATURE_POLL
-                    ],
+                    CONF_ENABLE_TEMPERATURE_POLL: user_input[CONF_ENABLE_TEMPERATURE_POLL],
                     CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
@@ -311,14 +320,13 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                 ): vol.All(int, vol.Range(min=5, max=300)),
                 vol.Required(
                     CONF_TEMPERATURE_COMMAND,
-                    default=cfg.get(
-                        CONF_TEMPERATURE_COMMAND,
-                        DEFAULT_TEMPERATURE_COMMAND,
-                    ),
+                    default=cfg.get(CONF_TEMPERATURE_COMMAND, DEFAULT_TEMPERATURE_COMMAND),
                 ): vol.All(int, vol.Range(min=0, max=255)),
                 vol.Optional(
                     CONF_ACTION_COMMANDS,
-                    default=_actions_to_text(cfg.get(CONF_ACTION_COMMANDS, [])),
+                    default=_actions_to_text(
+                        cfg.get(CONF_ACTION_COMMANDS, DEFAULT_ACTION_COMMANDS)
+                    ),
                 ): str,
                 vol.Optional(
                     CONF_DIAGNOSTIC_COMMANDS,
@@ -335,19 +343,21 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                 ): bool,
                 vol.Required(
                     CONF_CONNECT_ON_DEMAND,
-                    default=cfg.get(
-                        CONF_CONNECT_ON_DEMAND,
-                        DEFAULT_CONNECT_ON_DEMAND,
-                    ),
+                    default=cfg.get(CONF_CONNECT_ON_DEMAND, DEFAULT_CONNECT_ON_DEMAND),
                 ): bool,
                 vol.Optional(
                     CONF_SWITCH_DEFINITIONS,
-                    default=_switches_to_text(cfg.get(CONF_SWITCH_DEFINITIONS, [])),
+                    default=_switches_to_text(
+                        cfg.get(CONF_SWITCH_DEFINITIONS, DEFAULT_SWITCH_DEFINITIONS)
+                    ),
                 ): str,
                 vol.Optional(
                     CONF_VALUE_SENSOR_DEFINITIONS,
                     default=_value_sensors_to_text(
-                        cfg.get(CONF_VALUE_SENSOR_DEFINITIONS, [])
+                        cfg.get(
+                            CONF_VALUE_SENSOR_DEFINITIONS,
+                            DEFAULT_VALUE_SENSOR_DEFINITIONS,
+                        )
                     ),
                 ): str,
             }
