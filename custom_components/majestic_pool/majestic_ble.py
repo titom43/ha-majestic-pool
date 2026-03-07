@@ -17,6 +17,8 @@ _LOGGER = logging.getLogger(__name__)
 UUID_SERVICE = "569a1101-b87f-490c-92cb-11ba5ea5167c"
 UUID_RX = "569a2000-b87f-490c-92cb-11ba5ea5167c"
 UUID_TX = "569a2001-b87f-490c-92cb-11ba5ea5167c"
+UUID_PAIRING = "569a2004-b87f-490c-92cb-11ba5ea5167c"
+PAIRING_SENTINEL = b"pairingTest"
 
 
 @dataclass(slots=True)
@@ -29,8 +31,16 @@ class MajesticState:
 class MajesticBleHub:
     """Stateful BLE hub handling transport and commands."""
 
-    def __init__(self, address: str) -> None:
+    def __init__(
+        self,
+        address: str,
+        *,
+        enable_pairing_probe: bool = True,
+        pairing_timeout: float = 45.0,
+    ) -> None:
         self.address = address
+        self._enable_pairing_probe = enable_pairing_probe
+        self._pairing_timeout = pairing_timeout
         self._client: BleakClient | None = None
         self._tx_char: BleakGATTCharacteristic | None = None
         self._rx_char: BleakGATTCharacteristic | None = None
@@ -62,11 +72,39 @@ class MajesticBleHub:
         if tx_char is None or rx_char is None:
             await client.disconnect()
             raise RuntimeError("Majestic TX/RX characteristics not found")
+        pairing_char = service.get_characteristic(UUID_PAIRING)
+        if self._enable_pairing_probe and pairing_char is not None:
+            await self._async_wait_pairing_ready(client, pairing_char)
 
         self._client = client
         self._tx_char = tx_char
         self._rx_char = rx_char
         await client.start_notify(rx_char, self._handle_notification)
+
+    async def _async_wait_pairing_ready(
+        self, client: BleakClient, pairing_char: BleakGATTCharacteristic
+    ) -> None:
+        """Wait until pairing characteristic returns the expected sentinel."""
+        deadline = asyncio.get_running_loop().time() + self._pairing_timeout
+        last_error: Exception | None = None
+
+        while asyncio.get_running_loop().time() < deadline:
+            try:
+                value = bytes(await client.read_gatt_char(pairing_char))
+                if PAIRING_SENTINEL in value:
+                    _LOGGER.debug("Majestic pairing probe successful: %s", value.hex())
+                    return
+            except Exception as err:  # noqa: BLE001
+                # Common transient during non-paired state (e.g. Android GATT 133).
+                last_error = err
+                _LOGGER.debug("Pairing probe not ready yet: %s", err)
+            await asyncio.sleep(1.0)
+
+        if last_error is not None:
+            raise RuntimeError(
+                "Pairing BLE Majestic non valide dans le délai imparti"
+            ) from last_error
+        raise RuntimeError("Pairing BLE Majestic non valide dans le délai imparti")
 
     async def async_disconnect(self) -> None:
         """Disconnect the BLE client."""

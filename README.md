@@ -40,6 +40,8 @@ Intégration Home Assistant (Custom Component) pour piloter un coffret **Majesti
 - `temperature_command`: commande de lecture température (défaut `0x02`)
 - `enable_temperature_poll`: active/désactive le polling périodique
 - `connect_on_demand`: se connecte uniquement pour action/poll puis se déconnecte
+- `enable_pairing_probe`: vérifie l'état d'appairage BLE avant d'envoyer les commandes
+- `pairing_timeout`: délai max (en secondes) pour valider l'appairage (`pairingTest`)
 
 ### Actions brutes
 
@@ -114,7 +116,6 @@ Champ `diagnostic_commands` (liste hex):
 
 ## Limites actuelles
 
-- Le workflow d'appairage avancé (manip physique + séquence BLE spécifique) n'est pas encore entièrement automatisé côté intégration.
 - L'affectation métier précise (`projecteur` vs `pompe`) entre `0x1E` et `0x06` reste à confirmer.
 - L'échelle exacte des courants (`A`, `0.1A`, etc.) reste à confirmer définitivement selon captures terrain.
 

@@ -11,16 +11,20 @@ from homeassistant.core import callback
 from .const import (
     CONF_ACTION_COMMANDS,
     CONF_CONNECT_ON_DEMAND,
+    CONF_ENABLE_PAIRING_PROBE,
     CONF_DIAGNOSTIC_COMMANDS,
     CONF_ENABLE_TEMPERATURE_POLL,
+    CONF_PAIRING_TIMEOUT,
     CONF_POLL_INTERVAL,
     CONF_SWITCH_DEFINITIONS,
     CONF_TEMPERATURE_COMMAND,
     CONF_VALUE_SENSOR_DEFINITIONS,
     DEFAULT_ACTION_COMMANDS,
     DEFAULT_CONNECT_ON_DEMAND,
+    DEFAULT_ENABLE_PAIRING_PROBE,
     DEFAULT_DIAGNOSTIC_COMMANDS,
     DEFAULT_ENABLE_TEMPERATURE_POLL,
+    DEFAULT_PAIRING_TIMEOUT,
     DEFAULT_POLL_INTERVAL,
     DEFAULT_SWITCH_DEFINITIONS,
     DEFAULT_TEMPERATURE_COMMAND,
@@ -224,6 +228,8 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                     CONF_ENABLE_TEMPERATURE_POLL: user_input[CONF_ENABLE_TEMPERATURE_POLL],
                     CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
+                    CONF_ENABLE_PAIRING_PROBE: user_input[CONF_ENABLE_PAIRING_PROBE],
+                    CONF_PAIRING_TIMEOUT: user_input[CONF_PAIRING_TIMEOUT],
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
                     ),
@@ -260,6 +266,14 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_CONNECT_ON_DEMAND,
                     default=DEFAULT_CONNECT_ON_DEMAND,
                 ): bool,
+                vol.Required(
+                    CONF_ENABLE_PAIRING_PROBE,
+                    default=DEFAULT_ENABLE_PAIRING_PROBE,
+                ): bool,
+                vol.Required(
+                    CONF_PAIRING_TIMEOUT,
+                    default=DEFAULT_PAIRING_TIMEOUT,
+                ): vol.All(int, vol.Range(min=5, max=180)),
                 vol.Optional(
                     CONF_SWITCH_DEFINITIONS,
                     default=_switches_to_text(DEFAULT_SWITCH_DEFINITIONS),
@@ -302,6 +316,8 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     ),
                     CONF_ENABLE_TEMPERATURE_POLL: user_input[CONF_ENABLE_TEMPERATURE_POLL],
                     CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
+                    CONF_ENABLE_PAIRING_PROBE: user_input[CONF_ENABLE_PAIRING_PROBE],
+                    CONF_PAIRING_TIMEOUT: user_input[CONF_PAIRING_TIMEOUT],
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
                     ),
@@ -345,6 +361,16 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_CONNECT_ON_DEMAND,
                     default=cfg.get(CONF_CONNECT_ON_DEMAND, DEFAULT_CONNECT_ON_DEMAND),
                 ): bool,
+                vol.Required(
+                    CONF_ENABLE_PAIRING_PROBE,
+                    default=cfg.get(
+                        CONF_ENABLE_PAIRING_PROBE, DEFAULT_ENABLE_PAIRING_PROBE
+                    ),
+                ): bool,
+                vol.Required(
+                    CONF_PAIRING_TIMEOUT,
+                    default=cfg.get(CONF_PAIRING_TIMEOUT, DEFAULT_PAIRING_TIMEOUT),
+                ): vol.All(int, vol.Range(min=5, max=180)),
                 vol.Optional(
                     CONF_SWITCH_DEFINITIONS,
                     default=_switches_to_text(

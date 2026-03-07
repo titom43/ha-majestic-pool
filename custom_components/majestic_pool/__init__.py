@@ -7,7 +7,6 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
@@ -16,8 +15,11 @@ from .const import (
     ATTR_COMMAND,
     ATTR_ENTRY_ID,
     ATTR_PAYLOAD,
+    CONF_ADDRESS,
     CONF_CONNECT_ON_DEMAND,
+    CONF_ENABLE_PAIRING_PROBE,
     CONF_ENABLE_TEMPERATURE_POLL,
+    CONF_PAIRING_TIMEOUT,
     DOMAIN,
     PLATFORMS,
     SERVICE_REFRESH,
@@ -61,8 +63,12 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one config entry."""
-    hub = MajesticBleHub(entry.data[CONF_ADDRESS])
     config = {**entry.data, **entry.options}
+    hub = MajesticBleHub(
+        config[CONF_ADDRESS],
+        enable_pairing_probe=bool(config.get(CONF_ENABLE_PAIRING_PROBE, True)),
+        pairing_timeout=float(config.get(CONF_PAIRING_TIMEOUT, 45)),
+    )
     coordinator = MajesticCoordinator(hass, hub, config)
 
     hass.data[DOMAIN][entry.entry_id] = {
