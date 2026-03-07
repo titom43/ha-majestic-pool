@@ -3,21 +3,15 @@
     "step": {
       "user": {
         "title": "Majestic Pool",
-        "description": "Configurez votre coffret Majestic en Bluetooth.",
+        "description": "Configuration rapide. Les réglages avancés (commandes/switch/capteurs) sont disponibles ensuite dans les options de l'intégration.",
         "data": {
           "name": "Nom",
-          "address": "Adresse BLE",
-          "poll_interval": "Intervalle de polling (secondes)",
-          "temperature_command": "Commande température (octet)",
-          "action_commands": "Actions (Libellé:cmd_hex[:payload_hex], ...)",
-          "diagnostic_commands": "Commandes diagnostics (liste hex)",
-          "enable_temperature_poll": "Activer le polling périodique",
-          "connect_on_demand": "Connexion BLE à la demande",
-          "enable_pairing_probe": "Vérifier l'appairage avant envoi",
-          "pairing_timeout": "Timeout de vérification appairage (secondes)",
-          "device_name_prefix": "Préfixe de nom BLE de secours (ex: KKTO_)",
-          "switch_definitions": "Switches (Libellé|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
-          "value_sensor_definitions": "Capteurs valeur (Libellé|cmd|index_octet|échelle)"
+          "address": "Adresse BLE du boîtier",
+          "poll_interval": "Intervalle de rafraîchissement (secondes)"
+        },
+        "data_description": {
+          "address": "Adresse MAC Bluetooth du boîtier Majestic (format XX:XX:XX:XX:XX:XX).",
+          "poll_interval": "Exemple: 30 = 30 secondes (pas 30 minutes)."
         }
       }
     }
@@ -26,8 +20,9 @@
     "step": {
       "init": {
         "title": "Options Majestic Pool",
+        "description": "Paramètres avancés du protocole BLE. Laissez les valeurs par défaut si vous n'êtes pas en phase de reverse engineering.",
         "data": {
-          "poll_interval": "Intervalle de polling (secondes)",
+          "poll_interval": "Intervalle de rafraîchissement (secondes)",
           "temperature_command": "Commande température (octet)",
           "action_commands": "Actions (Libellé:cmd_hex[:payload_hex], ...)",
           "diagnostic_commands": "Commandes diagnostics (liste hex)",
@@ -35,9 +30,16 @@
           "connect_on_demand": "Connexion BLE à la demande",
           "enable_pairing_probe": "Vérifier l'appairage avant envoi",
           "pairing_timeout": "Timeout de vérification appairage (secondes)",
-          "device_name_prefix": "Préfixe de nom BLE de secours (ex: KKTO_)",
+          "device_name_prefix": "Préfixe BLE de secours (ex: KKTO_)",
           "switch_definitions": "Switches (Libellé|on_cmd|on_payload|off_cmd|off_payload|state_cmd|on_value)",
           "value_sensor_definitions": "Capteurs valeur (Libellé|cmd|index_octet|échelle)"
+        },
+        "data_description": {
+          "temperature_command": "Commande de lecture température. Laisser 2 (0x02) sauf besoin spécifique.",
+          "connect_on_demand": "Se connecte uniquement pour une action/lecture puis se déconnecte, pour limiter le blocage du boîtier physique.",
+          "enable_pairing_probe": "Teste la characteristic d'appairage avant d'envoyer les commandes.",
+          "pairing_timeout": "Durée maximale d'attente de l'état d'appairage valide.",
+          "device_name_prefix": "Préfixe de nom BLE utilisé si l'adresse configurée échoue. Non, pas besoin du nom complet."
         }
       }
     }

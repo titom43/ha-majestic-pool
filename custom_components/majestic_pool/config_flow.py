@@ -36,6 +36,10 @@ from .const import (
 )
 
 
+def _clamp(value: int, minimum: int, maximum: int) -> int:
+    return max(minimum, min(maximum, value))
+
+
 def _parse_actions(raw: str) -> list[dict[str, object]]:
     """Parse action list from text.
 
@@ -223,22 +227,16 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_NAME: user_input[CONF_NAME],
                     CONF_ADDRESS: address,
                     CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
-                    CONF_TEMPERATURE_COMMAND: user_input[CONF_TEMPERATURE_COMMAND],
-                    CONF_ACTION_COMMANDS: _parse_actions(user_input[CONF_ACTION_COMMANDS]),
-                    CONF_DIAGNOSTIC_COMMANDS: _parse_cmd_list(
-                        user_input[CONF_DIAGNOSTIC_COMMANDS]
-                    ),
-                    CONF_ENABLE_TEMPERATURE_POLL: user_input[CONF_ENABLE_TEMPERATURE_POLL],
-                    CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
-                    CONF_ENABLE_PAIRING_PROBE: user_input[CONF_ENABLE_PAIRING_PROBE],
-                    CONF_PAIRING_TIMEOUT: user_input[CONF_PAIRING_TIMEOUT],
-                    CONF_DEVICE_NAME_PREFIX: user_input[CONF_DEVICE_NAME_PREFIX].strip(),
-                    CONF_SWITCH_DEFINITIONS: _parse_switches(
-                        user_input[CONF_SWITCH_DEFINITIONS]
-                    ),
-                    CONF_VALUE_SENSOR_DEFINITIONS: _parse_value_sensors(
-                        user_input[CONF_VALUE_SENSOR_DEFINITIONS]
-                    ),
+                    CONF_TEMPERATURE_COMMAND: DEFAULT_TEMPERATURE_COMMAND,
+                    CONF_ACTION_COMMANDS: DEFAULT_ACTION_COMMANDS,
+                    CONF_DIAGNOSTIC_COMMANDS: DEFAULT_DIAGNOSTIC_COMMANDS,
+                    CONF_ENABLE_TEMPERATURE_POLL: DEFAULT_ENABLE_TEMPERATURE_POLL,
+                    CONF_CONNECT_ON_DEMAND: DEFAULT_CONNECT_ON_DEMAND,
+                    CONF_ENABLE_PAIRING_PROBE: DEFAULT_ENABLE_PAIRING_PROBE,
+                    CONF_PAIRING_TIMEOUT: DEFAULT_PAIRING_TIMEOUT,
+                    CONF_DEVICE_NAME_PREFIX: DEFAULT_DEVICE_NAME_PREFIX,
+                    CONF_SWITCH_DEFINITIONS: DEFAULT_SWITCH_DEFINITIONS,
+                    CONF_VALUE_SENSOR_DEFINITIONS: DEFAULT_VALUE_SENSOR_DEFINITIONS,
                 },
             )
 
@@ -249,46 +247,6 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL): vol.All(
                     int, vol.Range(min=5, max=300)
                 ),
-                vol.Required(
-                    CONF_TEMPERATURE_COMMAND,
-                    default=DEFAULT_TEMPERATURE_COMMAND,
-                ): vol.All(int, vol.Range(min=0, max=255)),
-                vol.Optional(
-                    CONF_ACTION_COMMANDS,
-                    default=_actions_to_text(DEFAULT_ACTION_COMMANDS),
-                ): str,
-                vol.Optional(
-                    CONF_DIAGNOSTIC_COMMANDS,
-                    default=_cmd_list_to_text(DEFAULT_DIAGNOSTIC_COMMANDS),
-                ): str,
-                vol.Required(
-                    CONF_ENABLE_TEMPERATURE_POLL,
-                    default=DEFAULT_ENABLE_TEMPERATURE_POLL,
-                ): bool,
-                vol.Required(
-                    CONF_CONNECT_ON_DEMAND,
-                    default=DEFAULT_CONNECT_ON_DEMAND,
-                ): bool,
-                vol.Required(
-                    CONF_ENABLE_PAIRING_PROBE,
-                    default=DEFAULT_ENABLE_PAIRING_PROBE,
-                ): bool,
-                vol.Required(
-                    CONF_PAIRING_TIMEOUT,
-                    default=DEFAULT_PAIRING_TIMEOUT,
-                ): vol.All(int, vol.Range(min=5, max=180)),
-                vol.Required(
-                    CONF_DEVICE_NAME_PREFIX,
-                    default=DEFAULT_DEVICE_NAME_PREFIX,
-                ): str,
-                vol.Optional(
-                    CONF_SWITCH_DEFINITIONS,
-                    default=_switches_to_text(DEFAULT_SWITCH_DEFINITIONS),
-                ): str,
-                vol.Optional(
-                    CONF_VALUE_SENSOR_DEFINITIONS,
-                    default=_value_sensors_to_text(DEFAULT_VALUE_SENSOR_DEFINITIONS),
-                ): str,
             }
         )
 
@@ -316,7 +274,9 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                 title="",
                 data={
                     CONF_POLL_INTERVAL: user_input[CONF_POLL_INTERVAL],
-                    CONF_TEMPERATURE_COMMAND: user_input[CONF_TEMPERATURE_COMMAND],
+                    CONF_TEMPERATURE_COMMAND: _clamp(
+                        int(user_input[CONF_TEMPERATURE_COMMAND]), 0, 255
+                    ),
                     CONF_ACTION_COMMANDS: _parse_actions(user_input[CONF_ACTION_COMMANDS]),
                     CONF_DIAGNOSTIC_COMMANDS: _parse_cmd_list(
                         user_input[CONF_DIAGNOSTIC_COMMANDS]
@@ -324,7 +284,9 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                     CONF_ENABLE_TEMPERATURE_POLL: user_input[CONF_ENABLE_TEMPERATURE_POLL],
                     CONF_CONNECT_ON_DEMAND: user_input[CONF_CONNECT_ON_DEMAND],
                     CONF_ENABLE_PAIRING_PROBE: user_input[CONF_ENABLE_PAIRING_PROBE],
-                    CONF_PAIRING_TIMEOUT: user_input[CONF_PAIRING_TIMEOUT],
+                    CONF_PAIRING_TIMEOUT: _clamp(
+                        int(user_input[CONF_PAIRING_TIMEOUT]), 5, 180
+                    ),
                     CONF_DEVICE_NAME_PREFIX: user_input[CONF_DEVICE_NAME_PREFIX].strip(),
                     CONF_SWITCH_DEFINITIONS: _parse_switches(
                         user_input[CONF_SWITCH_DEFINITIONS]
@@ -345,7 +307,7 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     CONF_TEMPERATURE_COMMAND,
                     default=cfg.get(CONF_TEMPERATURE_COMMAND, DEFAULT_TEMPERATURE_COMMAND),
-                ): vol.All(int, vol.Range(min=0, max=255)),
+                ): int,
                 vol.Optional(
                     CONF_ACTION_COMMANDS,
                     default=_actions_to_text(
@@ -378,7 +340,7 @@ class MajesticPoolOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     CONF_PAIRING_TIMEOUT,
                     default=cfg.get(CONF_PAIRING_TIMEOUT, DEFAULT_PAIRING_TIMEOUT),
-                ): vol.All(int, vol.Range(min=5, max=180)),
+                ): int,
                 vol.Required(
                     CONF_DEVICE_NAME_PREFIX,
                     default=cfg.get(CONF_DEVICE_NAME_PREFIX, DEFAULT_DEVICE_NAME_PREFIX),
