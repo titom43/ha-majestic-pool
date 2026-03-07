@@ -293,9 +293,16 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except Exception as err:  # noqa: BLE001
                 msg = str(err).lower()
                 if "appairage" in msg or "pairing" in msg:
-                    errors["base"] = "pairing_required"
+                    ble_hint = (
+                        "Echec appairage: mettez le boitier en mode appairage, "
+                        "selectionnez le boitier detecte, puis relancez la validation."
+                    )
                 else:
-                    errors["base"] = "cannot_connect"
+                    ble_hint = (
+                        "Connexion impossible. Verifiez que le boitier est allume, "
+                        "en mode appairage, proche du dongle BLE, et non connecte a l'app mobile."
+                    )
+                errors["base"] = "cannot_connect"
                 return self.async_show_form(
                     step_id="user",
                     data_schema=schema,
