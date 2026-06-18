@@ -283,33 +283,94 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(unique_id)
             self._abort_if_unique_id_configured()
 
+            # Resolve a proper BLEDevice via HA's Bluetooth registry so that
+            # the connection routes through the ESPHome BLE proxy instead of
+            # trying to use the HA host's (absent) local Bluetooth adapter.
+            ble_device = None
+            if address:
+                try:
+                    ble_device = bluetooth.async_ble_device_from_address(
+                        self.hass, address, connectable=True
+                    )
+                    _LOGGER.debug(
+                        "Majestic config flow: resolved BLEDevice %s via HA registry (proxy: %s)",
+                        address,
+                        getattr(ble_device, "details", {}).get("source", "unknown"),
+                    )
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.debug(
+                        "Majestic config flow: could not resolve BLEDevice for %s: %s",
+                        address,
+                        err,
+                    )
+
+            if ble_device is None and address:
+                _LOGGER.warning(
+                    "Majestic config flow: no BLEDevice in HA registry for %s. "
+                    "Connection will attempt raw address (may fail with ESPHome proxy).",
+                    address,
+                )
+
             # Validate BLE access + pairing before creating the entry.
+            # Use a generous timeout (35 s) since Android takes several GATT 133
+            # retries before the boitier exposes pairingTest.
+            _PAIRING_PROBE_TIMEOUT = 35.0
             hub = MajesticBleHub(
                 address,
+                ble_device=ble_device,
                 enable_pairing_probe=DEFAULT_ENABLE_PAIRING_PROBE,
-                pairing_timeout=DEFAULT_PAIRING_TIMEOUT,
+                pairing_timeout=_PAIRING_PROBE_TIMEOUT,
                 device_name_prefix=prefix,
+                debug_ble=True,
             )
             pairing_err: Exception | None = None
             connect_err: Exception | None = None
 
+            _LOGGER.info(
+                "Majestic config flow: testing pairing probe addr=%s ble_device=%s timeout=%.0fs",
+                address,
+                ble_device is not None,
+                _PAIRING_PROBE_TIMEOUT,
+            )
             try:
                 await hub.async_connect(require_pairing_ready=True)
             except Exception as err:  # noqa: BLE001
                 pairing_err = err
+                _LOGGER.warning(
+                    "Majestic config flow: pairing probe failed addr=%s: %s",
+                    address,
+                    err,
+                )
             finally:
                 await hub.async_disconnect()
 
             # Fallback: accept entry creation if BLE transport is reachable,
             # even when pairing sentinel is not exposed reliably by this firmware.
+            # Use a *separate* hub with enable_pairing_probe=False to truly skip the probe.
             if pairing_err is not None:
                 await asyncio.sleep(0.5)
+                hub_transport = MajesticBleHub(
+                    address,
+                    ble_device=ble_device,
+                    enable_pairing_probe=False,
+                    pairing_timeout=10.0,
+                    device_name_prefix=prefix,
+                    debug_ble=True,
+                )
+                _LOGGER.info(
+                    "Majestic config flow: fallback transport-only test addr=%s", address
+                )
                 try:
-                    await hub.async_connect(require_pairing_ready=False)
+                    await hub_transport.async_connect(require_pairing_ready=False)
                 except Exception as err:  # noqa: BLE001
                     connect_err = err
+                    _LOGGER.warning(
+                        "Majestic config flow: transport fallback also failed addr=%s: %s",
+                        address,
+                        err,
+                    )
                 finally:
-                    await hub.async_disconnect()
+                    await hub_transport.async_disconnect()
 
             if pairing_err is not None and connect_err is not None:
                 msg = str(connect_err).lower()
@@ -321,14 +382,14 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     )
                 else:
                     error_text = (
-                        "Connexion impossible. Verifiez: boitier allume, mode appairage actif, "
-                        "proximite BLE, et aucune connexion concurrente (telephone/app). "
-                        f"Detail: {connect_err}"
+                        "Connexion impossible. Verifiez: boitier allume, proximite BLE, "
+                        "et aucune connexion concurrente (telephone/app). "
+                        f"Detail technique: {connect_err}"
                     )
                 _LOGGER.warning(
-                    "Majestic validation failed addr=%s prefix=%s pairing_err=%s connect_err=%s",
+                    "Majestic validation failed addr=%s ble_device=%s pairing_err=%s connect_err=%s",
                     address,
-                    prefix,
+                    ble_device is not None,
                     pairing_err,
                     connect_err,
                 )
@@ -343,9 +404,9 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if pairing_err is not None and connect_err is None:
                 _LOGGER.warning(
                     "Majestic pairing probe failed but BLE transport is reachable "
-                    "(addr=%s, prefix=%s): %s",
+                    "(addr=%s, ble_device=%s): %s — creating entry anyway.",
                     address,
-                    prefix,
+                    ble_device is not None,
                     pairing_err,
                 )
 

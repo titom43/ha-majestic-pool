@@ -40,12 +40,14 @@ class MajesticBleHub:
         self,
         address: str,
         *,
+        ble_device: BLEDevice | None = None,
         enable_pairing_probe: bool = True,
         pairing_timeout: float = 45.0,
         device_name_prefix: str = "KKTO_",
         debug_ble: bool = False,
     ) -> None:
         self.address = address
+        self._ble_device = ble_device
         self._enable_pairing_probe = enable_pairing_probe
         self._pairing_timeout = pairing_timeout
         self._device_name_prefix = device_name_prefix.strip()
@@ -84,19 +86,36 @@ class MajesticBleHub:
         if hasattr(client, "get_services"):
             await client.get_services()
 
-        service = client.services.get_service(UUID_SERVICE)
-        if service is None:
-            await client.disconnect()
-            raise RuntimeError(f"Majestic BLE service not found: {UUID_SERVICE}")
+        def _resolve_chars(c: BleakClient):
+            svc = c.services.get_service(UUID_SERVICE)
+            if svc is None:
+                return None, None, None
+            return (
+                svc.get_characteristic(UUID_TX),
+                svc.get_characteristic(UUID_RX),
+                svc.get_characteristic(UUID_PAIRING),
+            )
 
-        tx_char = service.get_characteristic(UUID_TX)
-        rx_char = service.get_characteristic(UUID_RX)
+        tx_char, rx_char, pairing_char = _resolve_chars(client)
         if tx_char is None or rx_char is None:
+            # Try to detect whether the service itself is missing.
+            if client.services.get_service(UUID_SERVICE) is None:
+                await client.disconnect()
+                raise RuntimeError(f"Majestic BLE service not found: {UUID_SERVICE}")
             await client.disconnect()
             raise RuntimeError("Majestic TX/RX characteristics not found")
-        pairing_char = service.get_characteristic(UUID_PAIRING)
+
         if (require_pairing_ready or self._enable_pairing_probe) and pairing_char is not None:
+            # _async_wait_pairing_ready may reconnect internally; it stores the
+            # new client in self._client so we read it back afterwards.
+            self._client = client
             await self._async_wait_pairing_ready(client, pairing_char)
+            # Pick up any reconnected client set by the probe.
+            client = self._client
+            tx_char, rx_char, _ = _resolve_chars(client)
+            if tx_char is None or rx_char is None:
+                await client.disconnect()
+                raise RuntimeError("Majestic TX/RX characteristics lost after pairing probe")
 
         self._client = client
         self._tx_char = tx_char
@@ -132,27 +151,53 @@ class MajesticBleHub:
         raise RuntimeError("Boitier BLE Majestic introuvable")
 
     async def _async_establish_client(self, address: str) -> BleakClient:
-        """Create/connect a Bleak client, preferring bleak-retry-connector in HA."""
+        """Create/connect a Bleak client, preferring bleak-retry-connector in HA.
+
+        Priority:
+        1. Pre-resolved BLEDevice (from HA bluetooth registry, routes via ESPHome proxy).
+        2. BleakScanner lookup (works when host has direct BLE adapter).
+        3. Raw address string fallback (last resort, may not route via proxy).
+        """
         if establish_connection is not None:
             device: BLEDevice | str = address
-            try:
-                found = await BleakScanner.find_device_by_address(address, timeout=2.0)
-                if found is not None:
-                    device = found
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.debug(
-                    "Could not resolve BLEDevice for %s, using address fallback: %s",
+
+            # Use a pre-resolved BLEDevice if available (required for ESPHome proxy).
+            if self._ble_device is not None and self._ble_device.address.lower() == address.lower():
+                device = self._ble_device
+                self._dbg("using pre-resolved BLEDevice from HA registry for %s", address)
+            else:
+                try:
+                    found = await BleakScanner.find_device_by_address(address, timeout=2.0)
+                    if found is not None:
+                        device = found
+                        self._dbg("BleakScanner resolved BLEDevice for %s", address)
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.debug(
+                        "BleakScanner lookup failed for %s (normal with ESPHome proxy): %s",
+                        address,
+                        err,
+                    )
+
+            if isinstance(device, str):
+                _LOGGER.warning(
+                    "No BLEDevice resolved for %s — connection may fail via ESPHome proxy. "
+                    "Pass ble_device from bluetooth.async_ble_device_from_address().",
                     address,
-                    err,
                 )
-            self._dbg("establish_connection via bleak-retry-connector for %s", address)
+
+            self._dbg(
+                "establish_connection via bleak-retry-connector for %s (device type: %s)",
+                address,
+                type(device).__name__,
+            )
             return await establish_connection(BleakClient, device, address)
 
         _LOGGER.warning(
             "bleak-retry-connector indisponible, fallback direct BleakClient.connect pour %s",
             address,
         )
-        client = BleakClient(address)
+        client_device: BLEDevice | str = self._ble_device if self._ble_device is not None else address
+        client = BleakClient(client_device)
         await client.connect()
         return client
 
@@ -183,30 +228,70 @@ class MajesticBleHub:
     async def _async_wait_pairing_ready(
         self, client: BleakClient, pairing_char: BleakGATTCharacteristic
     ) -> None:
-        """Wait until pairing characteristic returns the expected sentinel."""
+        """Wait until pairing characteristic returns the expected sentinel.
+
+        Android behaviour: several GATT status=133 errors are normal before
+        the boitier exposes 'pairingTest'. We absorb those and keep retrying
+        until the deadline. If the BLE connection drops mid-probe we reconnect.
+        """
         deadline = asyncio.get_running_loop().time() + self._pairing_timeout
+        attempt = 0
         last_error: Exception | None = None
 
         while asyncio.get_running_loop().time() < deadline:
+            attempt += 1
+            remaining = deadline - asyncio.get_running_loop().time()
+            self._dbg(
+                "pairing probe attempt=%d remaining=%.1fs connected=%s",
+                attempt,
+                remaining,
+                client.is_connected,
+            )
+
+            # Reconnect if the connection dropped during a previous iteration.
+            if not client.is_connected:
+                self._dbg("pairing probe: client disconnected, reconnecting…")
+                try:
+                    reconnected = await self._async_establish_client(self.address)
+                    client = reconnected
+                    # Re-resolve the pairing characteristic on the new connection.
+                    service = client.services.get_service(UUID_SERVICE)
+                    if service is not None:
+                        new_char = service.get_characteristic(UUID_PAIRING)
+                        if new_char is not None:
+                            pairing_char = new_char
+                except Exception as err:  # noqa: BLE001
+                    last_error = err
+                    self._dbg("pairing probe reconnect failed: %s", err)
+                    await asyncio.sleep(2.0)
+                    continue
+
             try:
                 value = bytes(await client.read_gatt_char(pairing_char))
-                self._dbg("pairing probe read=%s", value.hex())
+                self._dbg("pairing probe read hex=%s", value.hex())
                 if PAIRING_SENTINEL in value:
-                    self._dbg("pairing probe success")
+                    self._dbg("pairing probe SUCCESS after %d attempt(s)", attempt)
+                    # Store the reconnected client so async_connect can use it.
+                    self._client = client
                     return
+                # Value present but not the sentinel — device not yet in pairing mode.
+                self._dbg(
+                    "pairing probe: got '%s', not pairingTest yet",
+                    value.decode("ascii", errors="replace"),
+                )
             except Exception as err:  # noqa: BLE001
-                # Common transient during non-paired state (e.g. Android GATT 133).
+                # GATT status=133 and similar transient errors are expected before
+                # the boitier enters pairing mode; treat them as non-fatal.
                 last_error = err
-                self._dbg("pairing probe transient error: %s", err)
-            await asyncio.sleep(1.0)
+                self._dbg(
+                    "pairing probe transient error (attempt=%d): %s", attempt, err
+                )
 
-        if last_error is not None:
-            raise RuntimeError(
-                "Appairage BLE non valide: mettez le boitier Majestic en mode appairage puis relancez."
-            ) from last_error
+            await asyncio.sleep(1.5)
+
         raise RuntimeError(
             "Appairage BLE non valide: mettez le boitier Majestic en mode appairage puis relancez."
-        )
+        ) from last_error
 
     async def async_disconnect(self) -> None:
         """Disconnect the BLE client."""
