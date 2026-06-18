@@ -307,11 +307,13 @@ class MajesticBleHub:
                         continue
 
                 try:
-                    value = bytes(
-                        await asyncio.wait_for(
-                            client.read_gatt_char(pairing_char), timeout=6.0
-                        )
-                    )
+                    # No asyncio.wait_for here: when the boitier returns ATT Error
+                    # (status=133), the ESPHome proxy swallows it and waits its own
+                    # 30 s internal timeout before raising to bleak. If we cancel at
+                    # 6 s we never give the proxy time to forward the eventual
+                    # pairingTest response. The boitier's pairing window is ~20 s,
+                    # so the reply arrives before the proxy's 30 s deadline.
+                    value = bytes(await client.read_gatt_char(pairing_char))
                     self._dbg("pairing probe read hex=%s", value.hex())
                     if PAIRING_SENTINEL in value:
                         self._dbg("pairing probe SUCCESS via read after %d attempt(s)", attempt)

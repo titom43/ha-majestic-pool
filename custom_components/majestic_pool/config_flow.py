@@ -312,9 +312,10 @@ class MajesticPoolConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
             # Validate BLE access + pairing before creating the entry.
-            # Use a generous timeout (35 s) since Android takes several GATT 133
-            # retries before the boitier exposes pairingTest.
-            _PAIRING_PROBE_TIMEOUT = 35.0
+            # ESPHome proxy swallows ATT errors and waits its own 30 s internal
+            # timeout before raising to bleak. We need at least 30 s for one read
+            # attempt plus a few seconds of connect/discover overhead.
+            _PAIRING_PROBE_TIMEOUT = 40.0
             hub = MajesticBleHub(
                 address,
                 ble_device=ble_device,

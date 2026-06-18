@@ -36,10 +36,13 @@ def build_packet(cmd: int, payload: bytes = b"") -> bytes:
 def encode_packet_ascii(cmd: int, payload: bytes = b"") -> bytes:
     """Encode packet to ASCII format used on BLE UART.
 
-    Example: :0302fb
+    The Android app sends uppercase hex (e.g. ':0302FB'). We match that
+    to avoid any case-sensitivity issue on the boitier firmware.
+
+    Example: :0302FB
     """
     raw = build_packet(cmd, payload)
-    return f":{raw.hex()}".encode("ascii")
+    return f":{raw.hex().upper()}".encode("ascii")
 
 
 def decode_packet_ascii(frame: str) -> MajesticPacket | None:
