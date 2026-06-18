@@ -69,8 +69,17 @@ async def async_setup(hass: HomeAssistant, _config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up one config entry."""
     config = {**entry.data, **entry.options}
+    address = config[CONF_ADDRESS]
+    ble_device = None
+    try:
+        from homeassistant.components import bluetooth
+        ble_device = bluetooth.async_ble_device_from_address(hass, address, connectable=True)
+    except Exception:  # noqa: BLE001
+        pass
+
     hub = MajesticBleHub(
-        config[CONF_ADDRESS],
+        address,
+        ble_device=ble_device,
         enable_pairing_probe=bool(
             config.get(CONF_ENABLE_PAIRING_PROBE, DEFAULT_ENABLE_PAIRING_PROBE)
         ),

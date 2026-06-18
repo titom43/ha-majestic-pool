@@ -267,7 +267,14 @@ class MajesticBleHub:
                     continue
 
             try:
-                value = bytes(await client.read_gatt_char(pairing_char))
+                # Cap each read to 6 s so the ESPHome proxy's 30 s internal
+                # BluetoothGATTReadResponse timeout doesn't swallow the entire
+                # pairing window — we need multiple retries to catch pairingTest.
+                value = bytes(
+                    await asyncio.wait_for(
+                        client.read_gatt_char(pairing_char), timeout=6.0
+                    )
+                )
                 self._dbg("pairing probe read hex=%s", value.hex())
                 if PAIRING_SENTINEL in value:
                     self._dbg("pairing probe SUCCESS after %d attempt(s)", attempt)
@@ -280,14 +287,14 @@ class MajesticBleHub:
                     value.decode("ascii", errors="replace"),
                 )
             except Exception as err:  # noqa: BLE001
-                # GATT status=133 and similar transient errors are expected before
-                # the boitier enters pairing mode; treat them as non-fatal.
+                # GATT status=133, ESPHome proxy timeouts, and similar transient
+                # errors are expected before the boitier enters pairing mode.
                 last_error = err
                 self._dbg(
                     "pairing probe transient error (attempt=%d): %s", attempt, err
                 )
 
-            await asyncio.sleep(1.5)
+            await asyncio.sleep(1.0)
 
         raise RuntimeError(
             "Appairage BLE non valide: mettez le boitier Majestic en mode appairage puis relancez."
