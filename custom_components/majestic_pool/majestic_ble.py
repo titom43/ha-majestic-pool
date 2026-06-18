@@ -228,73 +228,123 @@ class MajesticBleHub:
     async def _async_wait_pairing_ready(
         self, client: BleakClient, pairing_char: BleakGATTCharacteristic
     ) -> None:
-        """Wait until pairing characteristic returns the expected sentinel.
+        """Wait until the pairing characteristic signals 'pairingTest'.
+
+        Strategy (dual-mode):
+        1. Subscribe to notifications/indications on 569a2004 first — the
+           ESPHome proxy cannot relay read_gatt_char on this characteristic
+           (always times out), but notify/indicate may work.
+        2. Fall back to polling read_gatt_char with a 6 s cap per attempt
+           (needed for direct BLE without proxy).
 
         Android behaviour: several GATT status=133 errors are normal before
-        the boitier exposes 'pairingTest'. We absorb those and keep retrying
-        until the deadline. If the BLE connection drops mid-probe we reconnect.
+        the boitier exposes 'pairingTest'. We absorb all errors as transient.
         """
         deadline = asyncio.get_running_loop().time() + self._pairing_timeout
+        sentinel_received = asyncio.Event()
+
+        # ── Strategy 1: subscribe to notifications on pairing char ──────────
+        props = set(getattr(pairing_char, "properties", []))
+        can_notify = bool(props & {"notify", "indicate"})
+        self._dbg(
+            "pairing probe: char properties=%s can_notify=%s", props, can_notify
+        )
+
+        def _pairing_notification(
+            _char: BleakGATTCharacteristic, data: bytearray
+        ) -> None:
+            self._dbg(
+                "pairing notify received hex=%s", bytes(data).hex()
+            )
+            if PAIRING_SENTINEL in bytes(data):
+                sentinel_received.set()
+
+        if can_notify:
+            try:
+                await client.start_notify(pairing_char, _pairing_notification)
+                self._dbg("pairing probe: subscribed to notifications on %s", UUID_PAIRING)
+            except Exception as err:  # noqa: BLE001
+                self._dbg("pairing probe: start_notify failed (will use read fallback): %s", err)
+                can_notify = False
+
+        # ── Strategy 2: polling read fallback (+ parallel wait for notify) ──
         attempt = 0
         last_error: Exception | None = None
 
-        while asyncio.get_running_loop().time() < deadline:
-            attempt += 1
-            remaining = deadline - asyncio.get_running_loop().time()
-            self._dbg(
-                "pairing probe attempt=%d remaining=%.1fs connected=%s",
-                attempt,
-                remaining,
-                client.is_connected,
-            )
-
-            # Reconnect if the connection dropped during a previous iteration.
-            if not client.is_connected:
-                self._dbg("pairing probe: client disconnected, reconnecting…")
-                try:
-                    reconnected = await self._async_establish_client(self.address)
-                    client = reconnected
-                    # Re-resolve the pairing characteristic on the new connection.
-                    service = client.services.get_service(UUID_SERVICE)
-                    if service is not None:
-                        new_char = service.get_characteristic(UUID_PAIRING)
-                        if new_char is not None:
-                            pairing_char = new_char
-                except Exception as err:  # noqa: BLE001
-                    last_error = err
-                    self._dbg("pairing probe reconnect failed: %s", err)
-                    await asyncio.sleep(2.0)
-                    continue
-
-            try:
-                # Cap each read to 6 s so the ESPHome proxy's 30 s internal
-                # BluetoothGATTReadResponse timeout doesn't swallow the entire
-                # pairing window — we need multiple retries to catch pairingTest.
-                value = bytes(
-                    await asyncio.wait_for(
-                        client.read_gatt_char(pairing_char), timeout=6.0
-                    )
-                )
-                self._dbg("pairing probe read hex=%s", value.hex())
-                if PAIRING_SENTINEL in value:
-                    self._dbg("pairing probe SUCCESS after %d attempt(s)", attempt)
-                    # Store the reconnected client so async_connect can use it.
+        try:
+            while asyncio.get_running_loop().time() < deadline:
+                # Check if a notification already delivered the sentinel.
+                if sentinel_received.is_set():
+                    self._dbg("pairing probe SUCCESS via notification after %d attempt(s)", attempt)
                     self._client = client
                     return
-                # Value present but not the sentinel — device not yet in pairing mode.
+
+                attempt += 1
+                remaining = deadline - asyncio.get_running_loop().time()
                 self._dbg(
-                    "pairing probe: got '%s', not pairingTest yet",
-                    value.decode("ascii", errors="replace"),
-                )
-            except Exception as err:  # noqa: BLE001
-                # GATT status=133, ESPHome proxy timeouts, and similar transient
-                # errors are expected before the boitier enters pairing mode.
-                last_error = err
-                self._dbg(
-                    "pairing probe transient error (attempt=%d): %s", attempt, err
+                    "pairing probe read attempt=%d remaining=%.1fs connected=%s",
+                    attempt,
+                    remaining,
+                    client.is_connected,
                 )
 
-            await asyncio.sleep(1.0)
+                if not client.is_connected:
+                    self._dbg("pairing probe: client disconnected, reconnecting…")
+                    try:
+                        reconnected = await self._async_establish_client(self.address)
+                        client = reconnected
+                        service = client.services.get_service(UUID_SERVICE)
+                        if service is not None:
+                            new_char = service.get_characteristic(UUID_PAIRING)
+                            if new_char is not None:
+                                pairing_char = new_char
+                                if can_notify:
+                                    await client.start_notify(pairing_char, _pairing_notification)
+                    except Exception as err:  # noqa: BLE001
+                        last_error = err
+                        self._dbg("pairing probe reconnect failed: %s", err)
+                        await asyncio.sleep(2.0)
+                        continue
+
+                try:
+                    value = bytes(
+                        await asyncio.wait_for(
+                            client.read_gatt_char(pairing_char), timeout=6.0
+                        )
+                    )
+                    self._dbg("pairing probe read hex=%s", value.hex())
+                    if PAIRING_SENTINEL in value:
+                        self._dbg("pairing probe SUCCESS via read after %d attempt(s)", attempt)
+                        self._client = client
+                        return
+                    self._dbg(
+                        "pairing probe: got '%s', not pairingTest yet",
+                        value.decode("ascii", errors="replace"),
+                    )
+                except Exception as err:  # noqa: BLE001
+                    last_error = err
+                    self._dbg(
+                        "pairing probe read transient error (attempt=%d): %s", attempt, err
+                    )
+
+                # Short wait — also gives time for a notification to arrive.
+                try:
+                    await asyncio.wait_for(
+                        asyncio.shield(sentinel_received.wait()), timeout=1.0
+                    )
+                    if sentinel_received.is_set():
+                        self._dbg("pairing probe SUCCESS via notification (during sleep)")
+                        self._client = client
+                        return
+                except asyncio.TimeoutError:
+                    pass
+
+        finally:
+            if can_notify:
+                try:
+                    await client.stop_notify(pairing_char)
+                except Exception:  # noqa: BLE001
+                    pass
 
         raise RuntimeError(
             "Appairage BLE non valide: mettez le boitier Majestic en mode appairage puis relancez."
